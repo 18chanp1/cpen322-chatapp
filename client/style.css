@@ -1,0 +1,46 @@
+@media (min-width: 1024px)
+{
+    #app-view
+    {
+        width:80%;
+    }
+}
+
+@media ((max-width: 1023px) and (min-width: 768px))
+{
+    #app-view
+    {
+        width:90%;
+    }
+}
+
+@media ((max-width: 767px))
+{
+    #app-view
+    {
+        width:100%;
+    }
+}
+
+div.message 
+{
+    float: left;
+    background-color: aqua;
+}
+
+div.my-message
+{
+    float:right;
+    background-color: blue;
+}
+
+#app-menu li :hover
+{
+    background-color: blueviolet;
+    color:cornsilk;
+}
+
+.room-list li :hover 
+{
+    background-color: brown;
+}
