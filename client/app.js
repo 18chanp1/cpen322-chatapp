@@ -15,9 +15,12 @@ function createDOM (htmlString){
 }
 
 
-var p = window.addEventListener("load", main);
+
 
 var profile = {username:"Alice"};
+
+var p = window.addEventListener("load", main);
+console.log(p);
 
 function main() {
   let lobby = new Lobby();
@@ -61,6 +64,8 @@ function main() {
   }
   cpen322.export(arguments.callee, { renderRoute, lobbyView, chatView, profileView, lobby });
 }
+
+
 
 class LobbyView{
   constructor(lobby){
@@ -213,6 +218,8 @@ class ChatView {
     emptyDOM(this.chatElem);
 
     for(const e of this.room.messages){
+      console.log("printing messages");
+      console.log(e);
       let messageDOM = createDOM(`
         <div class = "message">
           <span class = "message-user"></span> <br>
@@ -220,12 +227,14 @@ class ChatView {
         </div>
       `)
       
-      messageDOM.querySelector("span.message-user").value = e.username;
-      messageDOM.querySelector("span.message-text").value = e.text;
+      messageDOM.querySelector("span.message-user").textContent = e.username;
+      messageDOM.querySelector("span.message-text").textContent = e.text;
+
+      if(profile.username === e.username){
+        messageDOM.className = "message my-message";
+      }
 
       this.chatElem.appendChild(messageDOM);
-
-      
 
     }
 
@@ -241,9 +250,15 @@ class ChatView {
         <span class = "message-text"></span> <br>
         </div>
       `)
+
+      
     
       messageDOM.querySelector("span.message-user").textContent = message.username;
       messageDOM.querySelector("span.message-text").textContent = message.text;
+
+      if(profile.username === message.username){
+        messageDOM.className = "message my-message";
+      }
 
       ourChatView.chatElem.appendChild(messageDOM);
     }
@@ -305,6 +320,9 @@ class Room {
       }
 
     }
+
+    console.log("All messages");
+    console.log(this.messages);
 
     
     
