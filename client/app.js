@@ -15,7 +15,9 @@ function createDOM (htmlString){
 }
 
 
-let p = window.addEventListener("load", main);
+var p = window.addEventListener("load", main);
+
+var profile = {username:"Alice"};
 
 function main() {
   let lobby = new Lobby();
@@ -39,8 +41,21 @@ function main() {
       emptyDOM(pageview);
       pageview.appendChild(profileView.elem, pageview);
     }
-    else if (hash == "#/chat/room-1"){
+    else if (hash.substring(0,6) == "#/chat"){
       emptyDOM(pageview);
+      let id = hash.substring(7);
+      ("id" + id);
+      let ouroom = lobby.getRoom(id);
+      ("roomno" + ouroom.name);
+
+      if(typeof ouroom !== "undefined"){
+        chatView.setRoom(ouroom);
+        ("success" + ouroom.name);
+      } else{
+        (typeof ouroom);
+      }
+
+
       pageview.appendChild(chatView.elem, pageview);
     }
   }
@@ -79,9 +94,16 @@ class LobbyView{
     this.redrawList();
 
     let bch = this.buttonclickhandler
+    var thislobby = this;
     this.buttonElem.addEventListener("click", function(){bch(thislobby)});
+
+
     
-    let thislobby = this;
+    this.lobby.onNewRoom = function(room) {
+      thislobby.redrawList();
+    }
+
+
 
     
 
@@ -89,23 +111,23 @@ class LobbyView{
 
   buttonclickhandler(theLobbyView) {
     let text = theLobbyView.inputElem.value;
-    theLobbyView.lobby.addRoom(theLobbyView.lobby.rooms.length,text);
+    theLobbyView.lobby.addRoom(text,text);
     theLobbyView.inputElem.value = "";
   }
 
   redrawList() {
     emptyDOM(this.listElem);
-    console.log(Object.keys(this.lobby.rooms));
+    (Object.keys(this.lobby.rooms));
     for(let i = 0; i < Object.keys(this.lobby.rooms).length; i++){
         var myid = Object.keys(this.lobby.rooms)[i];
-        console.log(this.lobby);
+        (this.lobby);
         let e = this.lobby.rooms[myid];
 
         if(typeof e === 'undefined'){
           continue;
         }
 
-        console.log(e.name);
+        (e.name);
 
        let roomElement = createDOM(`
           <li>
@@ -116,13 +138,13 @@ class LobbyView{
         linkElement.textContent = e.name;
         linkElement.href = "#/chat/" + e.id; 
 
-        console.log(this.listElem);
+        (this.listElem);
 
       this.listElem.appendChild(roomElement);
     }
 
-    // console.log(this.lobby.rooms);
-    // console.log(this.listElem.childNodes.length);
+    // (this.lobby.rooms);
+    // (this.listElem.childNodes.length);
 
 
     //TODO
@@ -134,15 +156,15 @@ class ChatView {
     this.elem = createDOM(`
           <div id = "page-view">
           <div class = "content">
-            <h4 class = "room-name"></h4>
+            <h4 class = "room-name">Test room TESTIFICATE</h4>
             <div class = "message-list">
               <div class = "message">
-                <span class = "message-user"></span>
-                <span class = "message-text"></span>
+                <span class = "message-user">Test user</span>
+                <span class = "message-text">I am a student</span>
               </div>
               <div class = "message my-message">
-                <span class = "message-user"></span>
-                <span class = "message-text"></span>
+                <span class = "message-user">Test Prof</span>
+                <span class = "message-text">Come to OH</span>
     
               </div>
             </div>
@@ -157,6 +179,74 @@ class ChatView {
     this.chatElem = this.elem.querySelector("div.message-list");
     this.inputElem = this.elem.querySelector("textarea");
     this.buttonElem = this.elem.querySelector("button");
+
+    this.room = null;
+
+    let thisChatViewObject = this;
+
+    this.buttonElem.addEventListener("click", function(){
+      thisChatViewObject.sendMessage();
+    }, false);
+
+    this.inputElem.addEventListener("keyup", (event) =>{
+      if(event.key === "Enter" && !event.shiftKey){
+        thisChatViewObject.sendMessage();
+      }
+    }
+    );
+  }
+
+  sendMessage(){
+    ("sent");
+    let inputmessage = this.inputElem.value;
+    this.room.addMessage(profile.username, inputmessage);
+    this.inputElem.value = "";
+  }
+
+  setRoom(room){
+    this.room = room;
+
+    ("before title:" + this.titleElem.value);
+    this.titleElem.textContent = room.name;
+    ("title:" + this.titleElem.value);
+
+    emptyDOM(this.chatElem);
+
+    for(const e of this.room.messages){
+      let messageDOM = createDOM(`
+        <div class = "message">
+          <span class = "message-user"></span> <br>
+          <span class = "message-text"></span> <br>
+        </div>
+      `)
+      
+      messageDOM.querySelector("span.message-user").value = e.username;
+      messageDOM.querySelector("span.message-text").value = e.text;
+
+      this.chatElem.appendChild(messageDOM);
+
+      
+
+    }
+
+    let ourChatView = this;
+
+    this.room.onNewMessage = function (message) {
+
+      console.log("adding")
+
+      let messageDOM = createDOM(`
+        <div class = "message">
+        <span class = "message-user"></span> <br>
+        <span class = "message-text"></span> <br>
+        </div>
+      `)
+    
+      messageDOM.querySelector("span.message-user").textContent = message.username;
+      messageDOM.querySelector("span.message-text").textContent = message.text;
+
+      ourChatView.chatElem.appendChild(messageDOM);
+    }
   }
 }
 
@@ -209,7 +299,14 @@ class Room {
         text: text,
       };
       this.messages.push(aMessage);
+
+      if(typeof this.onNewMessage === "function"){
+        this.onNewMessage(aMessage);
+      }
+
     }
+
+    
     
   }
 }
@@ -231,5 +328,9 @@ class Lobby{
 
   addRoom(id, name, image, messages){
     this.rooms[id] = new Room(id, name, image, messages);
+
+    if(typeof this.onNewRoom === 'function'){
+      this.onNewRoom(this.rooms[id]);
+    }
   }
 }
