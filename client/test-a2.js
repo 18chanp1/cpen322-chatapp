@@ -1,1350 +1,682 @@
 const __tester = {
     listeners: [],
+    timers: [],
     exports: new Map,
     defaults: {
         image: "assets/everyone-icon.png",
-        testRoomId: "room-1"
+        webSocketServer: "ws://localhost:8000"
     },
     oldAddEventListener: HTMLElement.prototype.addEventListener,
-    newAddEventListener: function(type, listener, ...options) {
-        __tester.listeners.push({
+    newAddEventListener: function(e, t, ...s) {
+        return __tester.listeners.push({
             node: this,
-            type: type,
-            listener: listener,
-            invoke: evt => listener.call(this, evt)
-        });
-        return __tester.oldAddEventListener.call(this, type, listener, ...options)
+            type: e,
+            listener: t,
+            invoke: e => t.call(this, e)
+        }), __tester.oldAddEventListener.call(this, e, t, ...s)
     },
-    export: (scope, dict) => {
-        if (!__tester.exports.has(scope)) __tester.exports.set(scope, {});
-        Object.assign(__tester.exports.get(scope), dict)
+    oldSetInterval: window.setInterval,
+    newSetInterval: function(e, t, ...s) {
+        return __tester.timers.push({
+            type: "Interval",
+            func: e,
+            delay: t
+        }), __tester.oldSetInterval.call(this, e, t, ...s)
     },
-    setDefault: (key, val) => {
-        __tester.defaults[key] = val
+    export: (e, t) => {
+        __tester.exports.has(e) || __tester.exports.set(e, {}), Object.assign(__tester.exports.get(e), t)
+    },
+    setDefault: (e, t) => {
+        __tester.defaults[e] = t
     }
 };
-HTMLElement.prototype.addEventListener = __tester.newAddEventListener;
-Window.prototype.addEventListener = __tester.newAddEventListener;
-window["cpen322"] = {
+HTMLElement.prototype.addEventListener = __tester.newAddEventListener, WebSocket.prototype.addEventListener = __tester.newAddEventListener, window.setInterval = __tester.newSetInterval, window.cpen322 = {
     export: __tester.export,
     setDefault: __tester.setDefault
-};
-window.addEventListener("load", () => {
-    const a = "a2";
-    const pageChecks = {
-        "#/": (pageView, result, score = 1) => {
-            let pageContent = pageView.querySelector("div.content");
-            if (!pageContent) {
-                return result.comments.push(printError("Could not observe Lobby Page: could not find div.content"))
-            } else {
-                let roomList = pageContent.querySelector("ul.room-list");
-                if (!roomList) {
-                    return result.comments.push(printError("Could not observe Lobby Page: could not find ul.room-list"))
-                } else {
-                    let chatLinks = roomList.querySelectorAll("li a");
-                    if (!chatLinks.length === 0) {
-                        return result.comments.push(printError("Could not observe Lobby Page: could not find link to /#/chat/${roomId}"))
-                    } else {
-                        let chatLink = Array.from(chatLinks).find(node => node.attributes.href.nodeValue.indexOf("#/chat") === 0 || node.attributes.href.nodeValue.indexOf("/#/chat") === 0);
-                        if (!chatLink) {
-                            return result.comments.push(printError("Could not observe Lobby Page: could not find link to /#/chat/${roomId}"))
-                        }
-                    }
-                }
-                let pageControl = pageContent.querySelector("div.page-control");
-                if (!pageControl) {
-                    return result.comments.push(printError("Could not observe Lobby Page: could not find div.page-control"))
-                } else {
-                    let roomInput = pageControl.querySelector("input[type=text]");
-                    if (!roomInput) {
-                        return result.comments.push(printError("Could not observe Lobby Page: could not find text input in div.page-control"))
-                    }
-                    let roomBtn = pageControl.querySelector("button");
-                    if (!roomBtn) {
-                        return result.comments.push(printError("Could not observe Lobby Page: could not find button in div.page-control"))
-                    }
-                }
-            }
-            result.score += score;
-            printOK('Lobby Page was loaded when the hash was "#/"');
-            return
-        },
-        "#/chat": (pageView, result, score = 1) => {
-            let pageContent = pageView.querySelector("div.content");
-            if (!pageContent) {
-                return result.comments.push(printError("Could not observe Chat Page: could not find div.content"))
-            } else {
-                let roomName = pageContent.querySelector("h4.room-name");
-                if (!roomName) {
-                    result.comments.push(printError("Could not observe Chat Page: Could not find h4.room-name"))
-                }
-                let messageList = pageContent.querySelector("div.message-list");
-                if (!messageList) {
-                    return result.comments.push(printError("Could not observe Chat Page: could not find div.message-list"))
-                } else {
-                    if (!(typeof Room !== "undefined" && typeof Lobby !== "undefined" && typeof LobbyView !== "undefined" && LobbyView.prototype.redrawList && typeof ChatView !== "undefined" && ChatView.prototype.setRoom)) {
-                        let otherMessage = messageList.querySelector(".message:not(.my-message)");
-                        if (!otherMessage) {
-                            return result.comments.push(printError("Could not observe Chat Page: could not find at least 1 div.message that is not div.my-message"))
-                        } else {
-                            let otherUsername = otherMessage.querySelector("span.message-user");
-                            if (!otherUsername) {
-                                return result.comments.push(printError("Could not observe Chat Page: could not find span.message-user inside div.message"))
-                            }
-                            let otherText = otherMessage.querySelector("span.message-text");
-                            if (!otherText) {
-                                return result.comments.push(printError("Could not observe Chat Page: could not find span.message-text inside div.message"))
-                            }
-                        }
-                        let myMessage = messageList.querySelector(".my-message");
-                        if (!myMessage) {
-                            return result.comments.push(printError("Could not observe Chat Page: could not find at least 1 div.my-message"))
-                        } else {
-                            let myUsername = myMessage.querySelector("span.message-user");
-                            if (!myUsername) {
-                                return result.comments.push(printError("Could not observe Chat Page: could not find span.message-user inside div.my-message"))
-                            }
-                            let myText = myMessage.querySelector("span.message-text");
-                            if (!myText) {
-                                return result.comments.push(printError("Could not observe Chat Page: could not find span.message-text inside div.my-message"))
-                            }
-                        }
-                    }
-                }
-                let pageControl = pageContent.querySelector("div.page-control");
-                if (!pageControl) {
-                    return result.comments.push(printError("Could not observe Chat Page: could not find div.page-control"))
-                } else {
-                    let chatInput = pageControl.querySelector("textarea");
-                    if (!chatInput) {
-                        return result.comments.push(printError("Could not observe Chat Page: could not find textarea in div.page-control"))
-                    }
-                    let sendBtn = pageControl.querySelector("button");
-                    if (!sendBtn) {
-                        return result.comments.push(printError("Could not observe Chat Page: could not find button in div.page-control"))
-                    }
-                }
-            }
-            result.score += score;
-            printOK('Chat Page was loaded when the hash was "#/chat"');
-            return
-        },
-        "#/profile": (pageView, result, score = 1) => {
-            let pageContent = pageView.querySelector("div.content");
-            if (!pageContent) {
-                return result.comments.push(printError("Could not observe Profile Page: could not find div.content"))
-            } else {
-                let form = pageContent.querySelector("div.profile-form");
-                if (!form) {
-                    return result.comments.push(printError("Could not observe Profile Page: could not find div.profile-form"))
-                } else {
-                    let fields = pageContent.querySelectorAll("div.form-field");
-                    if (fields.length < 1) {
-                        return result.comments.push(printError("Could not observe Profile Page: could not find at least 1 div.form-field inside div.profile-form"))
-                    } else {
-                        let fieldLabel = fields[0].querySelector("label");
-                        if (!fieldLabel) {
-                            return result.comments.push(printError("Could not observe Profile Page: could not find label inside div.form-field"))
-                        }
-                        let fieldInput = fields[0].querySelector("input");
-                        if (!fieldInput) {
-                            return result.comments.push(printError("Could not observe Profile Page: could not find input inside div.form-field"))
-                        }
-                    }
-                }
-                let pageControl = pageContent.querySelector("div.page-control");
-                if (!pageControl) {
-                    return result.comments.push(printError("Could not observe Profile Page: could not find div.page-control"))
-                } else {
-                    let saveBtn = pageControl.querySelector("button");
-                    if (!saveBtn) {
-                        return result.comments.push(printError("Could not observe Profile Page: could not find button in div.page-control"))
-                    }
-                }
-            }
-            result.score += score;
-            printOK('Profile Page was loaded when the hash was "#/profile"');
-            return
-        }
-    };
-    const makeTestRoom = () => ({
-        id: Math.random().toString(),
-        name: Math.random().toString(),
-        image: __tester.defaults.image,
-        messages: [{
+}, window.addEventListener("load", () => {
+    const e = window.fetch,
+        t = "http://52.43.220.29:5000/",
+        s = () => new Room(Math.random().toString(), Math.random().toString(), __tester.defaults.image, [{
             username: Math.random().toString(),
             text: Math.random().toString()
         }, {
             username: Math.random().toString(),
             text: Math.random().toString()
-        }]
-    });
-    const tests = [{
-        id: "1",
-        description: "Main function",
-        maxScore: 1,
-        run: async () => {
-            let result = {
-                id: 1,
-                score: 0,
-                comments: []
-            };
-            let scriptTag = document.querySelector('script[src="app.js"],script[src="/app.js"],script[src="./app.js"]');
-            if (!scriptTag) {
-                scriptTag = document.querySelector('script[src="http://localhost:3000/app.js"],script[src="https://localhost:3000/app.js"],script[src="//localhost:3000/app.js"]');
-                if (scriptTag) {
-                    result.comments.push(printError("app.js is included using absolute URL"))
-                } else {
-                    result.comments.push(printError("app.js script not found"))
-                }
-            } else {
-                if (!main) {
-                    result.comments.push(printError('Could not find "main"'))
-                } else {
-                    result.score += .5;
-                    printOK('Found "main" function');
-                    let found = __tester.listeners.find(elem => elem.node === window && elem.type === "load" && elem.listener === main);
-                    if (!found) {
-                        result.comments.push(printError('"main" not added as a listener on window "load" event'))
-                    } else {
-                        result.score += .5;
-                        printOK('"main" was added as a listener on window "load" event')
+        }]),
+        o = (t, ...s) => e("cpen322/a3", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                func: t,
+                args: s
+            })
+        }).then(e => 200 === e.status ? e.json() : e.text().then(e => {
+            throw new Error(e)
+        })),
+        r = [{
+            id: "1",
+            description: "Getting data via AJAX GET",
+            maxScore: 5,
+            run: async () => {
+                let e = {
+                    id: 1,
+                    score: 0,
+                    comments: []
+                };
+                if (c('Checking "Service"'), "undefined" == typeof Service) e.comments.push(d('global variable "Service" is not defined'));
+                else if (e.score += .25, l('Found global variable named "Service"'), c('Checking "Service.origin"'), Service.origin && "string" == typeof Service.origin ? Service.origin !== window.location.origin ? e.comments.push(d('"Service.origin" is not set to window.location.origin')) : (e.score += .25, l('"Service.origin" is set to window.location.origin')) : e.comments.push(d('"Service.origin" is not defined')), c('Checking "Service.getAllRooms"'), Service.getAllRooms && Service.getAllRooms instanceof Function) {
+                    e.score += .25, l('"Service.getAllRooms" is a function');
+                    let s = Math.random().toString(),
+                        o = Service.origin;
+                    Service.origin = t + s;
+                    try {
+                        c('Calling "Service.getAllRooms" with "Service.origin" set to ' + Service.origin);
+                        let t = Service.getAllRooms();
+                        if (t && t instanceof Promise) {
+                            e.score += .5, l('"getAllRooms" returns a Promise');
+                            let o = await t;
+                            if (o && o instanceof Array) {
+                                e.score += .25, l('Promise returned by "getAllRooms" resolves to an Array'), o.map(e => e.id).join("") !== s.split(".")[1] ? e.comments.push(d('Promise returned by "getAllRooms" does not resolve to the Array returned by the test server')) : (e.score += .5, l('Promise returned by "getAllRooms" resolves to the Array returned by the test server'))
+                            } else e.comments.push(d('Promise returned by "getAllRooms" does not resolve to an Array'))
+                        } else e.comments.push(d('"getAllRooms" should return a Promise'))
+                    } catch (t) {
+                        e.comments.push(d('Unexpected error when calling "getAllRooms": ' + t.message)), c(t)
+                    } finally {
+                        Service.origin = o
                     }
-                }
+                    s = Math.random().toString(), Service.origin = t + "error/" + s;
+                    try {
+                        c('Calling "Service.getAllRooms" with "Service.origin" set to ' + Service.origin);
+                        let t = Service.getAllRooms();
+                        if (t && t instanceof Promise) {
+                            await t;
+                            e.comments.push(d('Promise returned by "getAllRooms" should reject upon any server-side error'))
+                        } else e.comments.push(d('"getAllRooms" should return a Promise'))
+                    } catch (t) {
+                        t instanceof Error && t.message === "Server Error 500: " + s ? (e.score += .5, l('Promise rejected by "getAllRooms" upon server-side error contains an Error object with the error message given by the server')) : e.comments.push(d('Promise rejected by "getAllRooms" upon server-side error should contain an Error object with the error message given by the server'))
+                    } finally {
+                        Service.origin = o
+                    }
+                    s = Math.random().toString(), Service.origin = "http://invalid-url";
+                    try {
+                        c('Calling "Service.getAllRooms" with "Service.origin" set to ' + Service.origin);
+                        let t = Service.getAllRooms();
+                        if (t && t instanceof Promise) {
+                            await t;
+                            e.comments.push(d('Promise returned by "getAllRooms" should reject upon any client-side error'))
+                        } else e.comments.push(d('"getAllRooms" should return a Promise'))
+                    } catch (t) {
+                        t instanceof Error ? (e.score += .25, l('Promise rejected by "getAllRooms" upon client-side error contains an Error object')) : e.comments.push(d('Promise rejected by "getAllRooms" upon client-side error should contain an Error object'))
+                    } finally {
+                        Service.origin = o
+                    }
+                } else e.comments.push(d('"Service.getAllRooms" function is not defined'));
+                c('Checking "refreshLobby"');
+                let o = __tester.exports.get(main);
+                if (o)
+                    if (o.refreshLobby)
+                        if (o.lobby) {
+                            let t = o.lobby,
+                                r = o.refreshLobby;
+                            if (t instanceof Lobby)
+                                if (r instanceof Function) {
+                                    e.score += .25, l('"refreshLobby" is a function');
+                                    let o = Service.getAllRooms,
+                                        n = t.rooms,
+                                        i = Lobby.prototype.addRoom,
+                                        a = {},
+                                        m = {};
+                                    for (let e = 0; e < 4; e++) {
+                                        let e = s();
+                                        a[e.id] = e, m[e.id] = e
+                                    }
+                                    t.rooms = m;
+                                    let h = Object.values(m).map(e => ({
+                                            id: e.id,
+                                            name: Math.random().toString(),
+                                            image: Math.random().toString()
+                                        })).concat([{
+                                            id: Math.random().toString(),
+                                            name: Math.random().toString(),
+                                            image: Math.random().toString(),
+                                            messages: [{
+                                                username: Math.random().toString(),
+                                                text: Math.random().toString()
+                                            }, {
+                                                username: Math.random().toString(),
+                                                text: Math.random().toString()
+                                            }]
+                                        }]),
+                                        g = [new Promise((t, s) => {
+                                            c('Checking if "Service.getAllRooms" was called inside "refreshLobby"'), Service.getAllRooms = (async () => (t(!0), e.score += .25, l('"Service.getAllRooms" was called inside "refreshLobby"'), h)), setTimeout(() => s(new Error('"getAllRooms" was not called inside "refreshLobby"')), 500)
+                                        }), new Promise((t, s) => {
+                                            c('Checking if "lobby.addRoom" was called inside "refreshLobby" upon receiving a new room'), Lobby.prototype.addRoom = ((s, o, r, n) => {
+                                                let i = new Room(s, o, r, n);
+                                                m[String(i.id)] = i;
+                                                let a = !!n && h[4].messages.reduce((e, t, s) => e && n[s] && t.username === n[s].username && t.text === n[s].text, !0);
+                                                h[4].id !== s && e.comments.push(d(`lobby.addRoom was called with incorrect "id" - expected ${h[4].id} but got ${s}`)), h[4].name !== o && e.comments.push(d(`lobby.addRoom was called with incorrect "name" - expected ${h[4].name} but got ${o}`)), h[4].image !== r && e.comments.push(d(`lobby.addRoom was called with incorrect "image" - expected ${h[4].image} but got ${r}`)), a || e.comments.push(d('lobby.addRoom was called with incorrect "messages"')), h[4].id === s && h[4].name === o && h[4].image === r && a && (e.score += .25, l("lobby.addRoom was called correctly")), t(!0)
+                                            }), setTimeout(() => s(new Error('Newly fetched room was not added using "lobby.addRoom" inside "refreshLobby"')), 500)
+                                        })];
+                                    try {
+                                        r(), await Promise.all(g)
+                                    } catch (t) {
+                                        e.comments.push(d(t.message)), c(t)
+                                    }
+                                    Lobby.prototype.addRoom = i, t.rooms = n, Service.getAllRooms = o, c("Comparing the received rooms with lobby.rooms"), h.forEach((t, s) => {
+                                        m[t.id] ? s < h.length - 1 && a[t.id] !== m[t.id] ? e.comments.push(d("Test room " + t.id + " instance was replaced with a new Room instance, instead of just updating the properties")) : m[t.id].name !== t.name ? e.comments.push(d("Test room " + t.id + ' "name" mismatch - expected name = ' + t.name)) : m[t.id].image !== t.image ? e.comments.push(d("Test room " + t.id + ' "image" mismatch - expected image = ' + t.image)) : (e.score += .25, l("Test room " + t.id + " OK")) : e.comments.push(d("Test room " + t.id + " not found"))
+                                    })
+                                } else e.comments.push(d('"refreshLobby" should be a function'));
+                            else e.comments.push(d('"lobby" should be a Lobby instance'));
+                            c('Checking if "refreshLobby" is called periodically');
+                            let n = __tester.timers.find(e => e.func === r);
+                            n ? n.delay < 5e3 ? e.comments.push(d("The interval given is too short - set it to at least 5 seconds or more")) : (e.score += .25, l('"refreshLobby" invoked periodically using setInterval')) : e.comments.push(d('"refreshLobby" not being invoked periodically using setInterval'))
+                        } else e.comments.push(d('local variable "lobby" inside "main" was not found/exported'));
+                else e.comments.push(d('local variable "refreshLobby" inside "main" was not found/exported'));
+                else e.comments.push(d('Unable to test: local variables inside "main" were not exported'));
+                return e
             }
-            return result
-        }
-    }, {
-        id: "2",
-        description: "Client-side Routing",
-        maxScore: 4,
-        run: async () => {
-            let result = {
-                id: 2,
-                score: 0,
-                comments: []
-            };
-            if (!main) {
-                result.comments.push(printError('Could not find "main"'))
-            } else {
-                let mainScope = __tester.exports.get(main);
-                if (!mainScope) {
-                    result.comments.push(printError('Unable to test: local variables inside "main" were not exported'))
-                } else {
-                    if (!mainScope["renderRoute"]) {
-                        result.comments.push(printError('local variable "renderRoute" inside "main" was not found/exported'))
-                    } else {
-                        let renderRoute = mainScope["renderRoute"];
-                        if (!(renderRoute instanceof Function)) {
-                            result.comments.push(printError('"renderRoute" should be a function'))
-                        } else {
-                            result.score += .5;
-                            printOK('Found "renderRoute" inside "main"');
-                            let found = __tester.listeners.find(elem => elem.node === window && elem.type === "popstate" && elem.listener === renderRoute);
-                            if (!found) {
-                                result.comments.push(printError('"renderRoute" not added as a listener on window "popstate" event'))
-                            } else {
-                                result.score += .5;
-                                printOK('"renderRoute" was added as a listener on window "popstate" event')
+        }, {
+            id: "2",
+            description: "Handling GET request at the Server",
+            maxScore: 4,
+            run: async () => {
+                let t = {
+                    id: 2,
+                    score: 0,
+                    comments: []
+                };
+                try {
+                    c('Trying to access "chatrooms" in server.js');
+                    let e = await o("getGlobalObject", "chatrooms");
+                    if (e && e instanceof Array)
+                        if (t.score += .25, l('Found "chatrooms" Array in server.js'), e.length < 2) t.comments.push(d('"chatrooms" Array in server.js should contain at least 2 rooms'));
+                        else {
+                            let s = {};
+                            e.reduce((e, o) => o.id && "string" == typeof o.id ? o.id && "string" == typeof o.id && s[o.id] ? (t.comments.push(d('object inside chatrooms should have a unique "id"')), !1) : o.name && "string" == typeof o.name ? o.image && "string" == typeof o.image ? o.messages ? (t.comments.push(d('object inside chatrooms should not have a "messages" property')), !1) : (s[o.id] = o, e && !0) : (t.comments.push(d('object inside chatrooms should have a string "image"')), !1) : (t.comments.push(d('object inside chatrooms should have a string "name"')), !1) : (t.comments.push(d('object inside chatrooms should have a string "id"')), !1), !0) && (t.score += .5, l('"chatrooms" contains the right objects'));
+                            try {
+                                c('Trying to access "messages" in server.js');
+                                let s = await o("getGlobalObject", "messages");
+                                if (s) {
+                                    t.score += .25, l('Found "messages" object in server.js'), e.reduce((e, o) => s[o.id] && s[o.id] instanceof Array ? e && !0 : (t.comments.push(d('"messages" object should contain an array for each room in "chatrooms". messages["' + o.id + '"] is currently ' + JSON.stringify(s[o.id]))), !1), !0) && (t.score += .5, l('"messages" object contains the right objects'))
+                                } else t.comments.push(d('"messages" object in server.js was not found/exported'))
+                            } catch (e) {
+                                t.comments.push(d('Error while getting "messages" object from the server: ' + e.message)), c(e)
                             }
                         }
-                    }
+                    else t.comments.push(d('"chatrooms" Array in server.js was not found/exported'))
+                } catch (e) {
+                    t.comments.push(d('Error while getting "chatrooms" array from the server: ' + e.message)), c(e)
                 }
-            }
-            let pages = ["#/", "#/chat/" + __tester.defaults.testRoomId, "#/profile"];
-            let pageView = document.querySelector("div#page-view");
-            if (!pageView) {
-                result.comments.push(printError("Could not find div#page-view"));
-                return result
-            }
-            let originalHash = window.location.hash;
-            let originalPage = pageView.innerHTML;
-            let prevPage = originalPage;
-            let pageIndex = pages.indexOf(originalHash);
-            if (pageIndex < 0) pageIndex = 2;
-            else pageIndex = (pageIndex + 1) % 3;
-            for (let i = 0; i < 3; i++) {
-                console.log(window.location.hash);
-                window.location.hash = pages[pageIndex];
-                console.log(window.location.hash);
-                await delay(10);
-                if (pageView.innerHTML === prevPage) {
-                    result.comments.push(printError("Could not observe content change when routing to " + pages[pageIndex]))
-                } else {
-                    pageChecks[pages[pageIndex].split("/").slice(0, 2).join("/")](pageView, result)
-                }
-                prevPage = pageView.innerHTML;
-                pageIndex = (pageIndex + 1) % 3
-            }
-            window.location.hash = originalHash;
-            return result
-        }
-    }, {
-        id: "3",
-        description: "View Model",
-        maxScore: 4,
-        run: async () => {
-            let result = {
-                id: 3,
-                score: 0,
-                comments: []
-            };
-            if (!LobbyView) {
-                result.comments.push(printError("Could not find LobbyView"))
-            } else {
-                if (!(LobbyView instanceof Function)) {
-                    result.comments.push(printError("LobbyView should be a class or a function"))
-                } else {
-                    let testRoom = makeTestRoom();
-                    let view = new LobbyView({
-                        rooms: [testRoom]
-                    });
-                    if (!(view.elem instanceof HTMLElement)) {
-                        result.comments.push(printError('"elem" property of a LobbyView instance should be an HTMLElement'))
-                    } else {
-                        let dummy = document.createElement("template");
-                        dummy.appendChild(view.elem);
-                        pageChecks["#/"](dummy, result, 1 / 3)
-                    }
-                }
-            }
-            if (!ChatView) {
-                result.comments.push(printError("Could not find ChatView"))
-            } else {
-                if (!(ChatView instanceof Function)) {
-                    result.comments.push(printError("ChatView should be a class or a function"))
-                } else {
-                    let view = new ChatView;
-                    if (!(view.elem instanceof HTMLElement)) {
-                        result.comments.push(printError('"elem" property of a ChatView instance should be an HTMLElement'))
-                    } else {
-                        let dummy = document.createElement("template");
-                        dummy.appendChild(view.elem);
-                        pageChecks["#/chat"](dummy, result, 1 / 3)
-                    }
-                }
-            }
-            if (!ProfileView) {
-                result.comments.push(printError("Could not find ProfileView"))
-            } else {
-                if (!(ProfileView instanceof Function)) {
-                    result.comments.push(printError("ProfileView should be a class or a function"))
-                } else {
-                    let view = new ProfileView;
-                    if (!(view.elem instanceof HTMLElement)) {
-                        result.comments.push(printError('"elem" property of a ProfileView instance should be an HTMLElement'))
-                    } else {
-                        let dummy = document.createElement("template");
-                        dummy.appendChild(view.elem);
-                        pageChecks["#/profile"](dummy, result, 1 / 3)
-                    }
-                }
-            }
-            let viewClasses = {
-                lobbyView: LobbyView,
-                chatView: ChatView,
-                profileView: ProfileView
-            };
-            let viewModels = {};
-            let mainScope = __tester.exports.get(main);
-            if (!mainScope) {
-                result.comments.push(printError('Unable to test: local variables inside "main" were not exported'))
-            } else {
-                Object.keys(viewClasses).forEach(name => {
-                    if (!mainScope[name]) {
-                        result.comments.push(printError('local variable "' + name + '" inside "main" was not found/exported'))
-                    } else {
-                        viewModels[name] = mainScope[name];
-                        if (!(mainScope[name] instanceof viewClasses[name])) {
-                            result.comments.push(printError('"' + name + '" should be an instance of ' + viewClasses[name].name))
-                        } else {
-                            result.score += .5;
-                            printOK(`"${name}" is an instance of "${viewClasses[name].name}"`)
-                        }
-                    }
-                })
-            }
-            let pages = [
-                ["#/", "lobbyView"],
-                ["#/chat/" + __tester.defaults.testRoomId, "chatView"],
-                ["#/profile", "profileView"]
-            ];
-            let pageView = document.querySelector("div#page-view");
-            if (!pageView) {
-                result.comments.push(printError("Could not find div#page-view"));
-                return result
-            }
-            let originalHash = window.location.hash;
-            let originalPage = pageView.firstChild;
-            let prevPage = originalPage;
-            let pageIndex = pages.findIndex(item => item[0] === originalHash);
-            if (pageIndex < 0) pageIndex = 2;
-            else pageIndex = (pageIndex + 1) % 3;
-            for (let i = 0; i < 3; i++) {
-                window.location.hash = pages[pageIndex][0];
-                await delay(10);
-                if (pageView.firstChild === prevPage) {
-                    result.comments.push(printError("Could not observe content change when routing to " + pages[pageIndex][0]))
-                } else {
-                    if (!viewModels[pages[pageIndex][1]]) {
-                        result.comments.push(printError('local variable "' + pages[pageIndex][1] + '" inside "main" was not found/exported'))
-                    } else {
-                        if (pageView.firstChild === viewModels[pages[pageIndex][1]].elem) {
-                            result.score += .5;
-                            printOK("Element rendered in " + pages[pageIndex][0] + " is the same as " + pages[pageIndex][1] + ".elem")
-                        } else {
-                            result.comments.push(printError("Element rendered in " + pages[pageIndex][0] + " is not the same as " + pages[pageIndex][1] + ".elem"))
-                        }
-                    }
-                }
-                prevPage = pageView.firstChild;
-                pageIndex = (pageIndex + 1) % 3
-            }
-            window.location.hash = originalHash;
-            return result
-        }
-    }, {
-        id: "4",
-        description: "Element binding",
-        maxScore: 2,
-        run: async () => {
-            let result = {
-                id: 4,
-                score: 0,
-                comments: []
-            };
-            if (!ChatView) {
-                result.comments.push(printError("Could not find ChatView"))
-            } else {
-                if (!(ChatView instanceof Function)) {
-                    result.comments.push(printError("ChatView should be a class or a function"))
-                } else {
-                    let view = new ChatView;
-                    if (!(view.elem instanceof HTMLElement)) {
-                        result.comments.push(printError('"elem" property of a ChatView instance should be an HTMLElement'))
-                    } else {
-                        if (!view.titleElem) {
-                            result.comments.push(printError('Could not find "titleElem" property on a ChatView instance'))
-                        } else {
-                            if (view.elem.querySelector("h4.room-name") !== view.titleElem) {
-                                result.comments.push(printError('"titleElem" property of a ChatView instance should be a reference to h4.room-name'))
-                            } else {
-                                result.score += 2 / 7;
-                                printOK('"titleElem" property of a ChatView instance is a reference to h4.room-name')
+                try {
+                    c("Making a GET request to /chat");
+                    let s = await e("/chat");
+                    if (200 !== s.status) t.comments.push(d("Error while making GET request to /chat: Server did not respond with status 200"));
+                    else {
+                        t.score += .5, l("Server responded with status 200 when making GET request to /chat");
+                        let e = await s.json();
+                        if (e && e instanceof Array) {
+                            t.score += .5, l("Server returned an Array at /chat"), e.length < 2 ? t.comments.push(d("Error while making GET request to /chat: Server should return at least 2 rooms")) : e.slice(0, 2).forEach(e => {
+                                e.id && "string" == typeof e.id ? e.name && "string" == typeof e.name ? e.image && "string" == typeof e.image ? e.messages && e.messages instanceof Array ? (t.score += .5, l(`Room ${e.id} looks OK`)) : t.comments.push(d('Error while making GET request to /chat: room should contain "messages" (Array)')) : t.comments.push(d('Error while making GET request to /chat: room should contain "image" (string)')) : t.comments.push(d('Error while making GET request to /chat: room should contain "name" (string)')) : t.comments.push(d('Error while making GET request to /chat: room should contain "id" (string)'))
+                            });
+                            try {
+                                c('Checking if "chatrooms" was modified in server.js');
+                                let e = await o("getGlobalObject", "chatrooms");
+                                if (e && e instanceof Array)
+                                    if (e.length < 2) t.comments.push(d('"chatrooms" Array in server.js should contain at least 2 rooms'));
+                                    else {
+                                        e.reduce((e, t) => e && !t.messages, !0) ? (t.score += .5, l('The room objects in "chatrooms" was not modified')) : t.comments.push(d('The room objects in "chatrooms" was modified'))
+                                    }
+                                else t.comments.push(d('"chatrooms" Array in server.js was not found/exported'))
+                            } catch (e) {
+                                t.comments.push(d('Error while getting "chatrooms" array from the server: ' + e.message)), c(e)
                             }
-                        }
-                        if (!view.chatElem) {
-                            result.comments.push(printError('Could not find "chatElem" property on a ChatView instance'))
-                        } else {
-                            if (view.elem.querySelector("div.message-list") !== view.chatElem) {
-                                result.comments.push(printError('"chatElem" property of a ChatView instance should be a reference to div.message-list'))
-                            } else {
-                                result.score += 2 / 7;
-                                printOK('"chatElem" property of a ChatView instance is a reference to div.message-list')
+                        } else t.comments.push(d("Error while making GET request to /chat: Server should return an Array object"))
+                    }
+                } catch (e) {
+                    t.comments.push(d("Error while making GET request to /chat: " + e.message)), c(e)
+                }
+                return t
+            }
+        }, {
+            id: "3",
+            description: "AJAX POST",
+            maxScore: 4,
+            run: async () => {
+                let s = {
+                    id: 3,
+                    score: 0,
+                    comments: []
+                };
+                if ("undefined" == typeof Service) s.comments.push(d('global variable "Service" is not defined'));
+                else if (c('Checking "Service.addRoom"'), Service.addRoom && Service.addRoom instanceof Function) {
+                    s.score += .25, l('"Service.addRoom" is a function');
+                    let r = Math.random().toString(),
+                        n = Service.origin;
+                    Service.origin = t + r;
+                    try {
+                        let e = {
+                            name: Math.random().toString(),
+                            image: Math.random().toString()
+                        };
+                        c('Calling "Service.addRoom" with "Service.origin" set to ' + Service.origin);
+                        let t = Service.addRoom(e);
+                        if (t && t instanceof Promise) {
+                            s.score += .25, l('"addRoom" returns a Promise');
+                            let o = await t;
+                            o ? o.id && o.id === r ? o.name && o.name === e.name ? o.image && o.image === e.image ? (s.score += .5, l('Promise returned by "addRoom" resolves to the object returned by the server')) : s.comments.push(d('Promise returned by "addRoom" does not resolve to the object returned by the server: "image" mismatch')) : s.comments.push(d('Promise returned by "addRoom" does not resolve to the object returned by the server: "name" mismatch')) : s.comments.push(d('Promise returned by "addRoom" does not resolve to the object returned by the server: "id" mismatch')) : s.comments.push(d('Promise returned by "addRoom" does not resolve to an object'))
+                        } else s.comments.push(d('"addRoom" should return a Promise'))
+                    } catch (e) {
+                        s.comments.push(d('Unexpected error when calling "addRoom": ' + e.message)), c(e)
+                    } finally {
+                        Service.origin = n
+                    }
+                    r = Math.random().toString(), Service.origin = t + "error/" + r;
+                    try {
+                        let e = {
+                            name: Math.random().toString(),
+                            image: Math.random().toString()
+                        };
+                        c('Calling "Service.addRoom" with "Service.origin" set to ' + Service.origin);
+                        let t = Service.addRoom(e);
+                        if (t && t instanceof Promise) {
+                            await t;
+                            s.comments.push(d('Promise returned by "addRoom" should reject upon any server-side error'))
+                        } else s.comments.push(d('"addRoom" should return a Promise'))
+                    } catch (e) {
+                        e instanceof Error && e.message === "Server Error 500: " + r ? (s.score += .5, l('Promise rejected by "addRoom" upon server-side error contains an Error object with the error message given by the server')) : s.comments.push(d('Promise rejected by "addRoom" upon server-side error should contain an Error object with the error message given by the server'))
+                    } finally {
+                        Service.origin = n
+                    }
+                    r = Math.random().toString(), Service.origin = "http://invalid-url";
+                    try {
+                        let e = {
+                            name: Math.random().toString(),
+                            image: Math.random().toString()
+                        };
+                        c('Calling "Service.addRoom" with "Service.origin" set to ' + Service.origin);
+                        let t = Service.addRoom(e);
+                        if (t && t instanceof Promise) {
+                            await t;
+                            s.comments.push(d('Promise returned by "addRoom" should reject upon any client-side error'))
+                        } else s.comments.push(d('"addRoom" should return a Promise'))
+                    } catch (e) {
+                        e instanceof Error ? (s.score += .25, l('Promise rejected by "addRoom" upon client-side error contains an Error object')) : s.comments.push(d('Promise rejected by "addRoom" upon client-side error should contain an Error object'))
+                    } finally {
+                        Service.origin = n
+                    }
+                    try {
+                        let t = __tester.exports.get(main).lobby,
+                            r = await o("getGlobalObject", "chatrooms"),
+                            n = {
+                                name: Math.random().toString(),
+                                image: __tester.defaults.image
+                            };
+                        c('Calling "Service.addRoom" with "Service.origin" set to ' + Service.origin);
+                        let i = await Service.addRoom(n);
+                        if (i && "string" == typeof i.id) {
+                            s.score += .25, l("Found an id in the new room object returned by the server"), c('Checking if "chatrooms" and "messages" were updated in server.js');
+                            let e = await o("getGlobalObject", "chatrooms"),
+                                a = await o("getGlobalObject", "messages"),
+                                m = e.find(e => e.id === i.id);
+                            m ? (s.score += .25, l('Newly added room was added to "chatrooms" in server.js'), m.name !== n.name ? s.comments.push(d('Newly added room in "chatrooms" does not have the "name" given by the client')) : m.image !== n.image ? s.comments.push(d('Newly added room in "chatrooms" does not have the "image" given by the client')) : (s.score += .25, l('Newly added room in "chatrooms" has the properties set by the client'))) : s.comments.push(d('Newly added room was not added to "chatrooms" in server.js'));
+                            let h = a[i.id];
+                            h && h instanceof Array && 0 === h.length ? (s.score += .25, l('An empty array was added to messages["' + i.id + '"] in server.js')) : s.comments.push(d('An empty array should be added to messages["' + i.id + '"] in server.js')), t.rooms[i.id] && delete t.rooms[i.id], await o("callObjectByString", "chatrooms.splice", 0, e.length, ...r)
+                        } else s.comments.push(d("Could not find an id in the new room object returned by the server"));
+                        try {
+                            c("Checking if server handles malformed request gracefully");
+                            let t = new AbortController,
+                                o = setTimeout(() => t.abort(), 5e3),
+                                r = await e(Service.origin + "/chat", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json"
+                                    },
+                                    body: "",
+                                    signal: t.signal
+                                });
+                            if (clearTimeout(o), 400 !== r.status) s.comments.push(d("Server should return HTTP status 400 when request is not formatted properly"));
+                            else {
+                                s.score += .25, l("Server returns HTTP status 400 when request is not formatted properly"), await r.text() ? (s.score += .25, l("Server returns some error message with HTTP status 400")) : s.comments.push(d("Server should return some error message with HTTP status 400"))
                             }
+                        } catch (e) {
+                            if ("AbortError" !== e.name) throw e;
+                            s.comments.push(d("Request timed out because server did not return any response to a malformed request"))
                         }
-                        if (!view.inputElem) {
-                            result.comments.push(printError('Could not find "inputElem" property on a ChatView instance'))
-                        } else {
-                            if (view.elem.querySelector(".page-control textarea") !== view.inputElem) {
-                                result.comments.push(printError('"inputElem" property of a ChatView instance should be a reference to the textarea inside div.page-control'))
-                            } else {
-                                result.score += 2 / 7;
-                                printOK('"inputElem" property of a ChatView instance is a reference to the textarea inside div.page-control')
-                            }
-                        }
-                        if (!view.buttonElem) {
-                            result.comments.push(printError('Could not find "buttonElem" property on a ChatView instance'))
-                        } else {
-                            if (view.elem.querySelector(".page-control button") !== view.buttonElem) {
-                                result.comments.push(printError('"buttonElem" property of a ChatView instance should be a reference to the button inside div.page-control'))
-                            } else {
-                                result.score += 2 / 7;
-                                printOK('"buttonElem" property of a ChatView instance is a reference to the button inside div.page-control')
-                            }
+                    } catch (e) {
+                        s.comments.push(d("Error while testing POST endpoint on the server: " + e.message)), c(e)
+                    }
+                } else s.comments.push(d('"Service.addRoom" function is not defined'));
+                c("Checking click event handler of lobbyView.buttonElem");
+                let r = new Lobby,
+                    n = new LobbyView(r),
+                    i = {
+                        id: Math.random().toString(),
+                        name: Math.random().toString(),
+                        image: __tester.defaults.image
+                    },
+                    a = Service.addRoom;
+                try {
+                    await new Promise((e, t) => {
+                        Service.addRoom = (async t => (e(), t && t.name ? (s.score += .25, l('"Service.addRoom" was invoked and the argument has a property "name"')) : s.comments.push(d('"Service.addRoom" was invoked, but the argument did not have a property "name"')), {
+                            id: i.id,
+                            name: t.name,
+                            image: t.image
+                        })), n.inputElem.value = i.name, n.buttonElem.click(), setTimeout(() => t(new Error('"Service.addRoom" was not invoked when clicking lobbyView.buttonElem')), 200)
+                    }), r.rooms[i.id] ? (s.score += .25, l("Newly added room was added to the lobby after Service.addRoom resolved successfully")) : s.comments.push(d("Newly added room was not added to the lobby after Service.addRoom resolved successfully"))
+                } catch (e) {
+                    s.comments.push(d('Error while testing buttonElem "click" event listener: ' + e.message)), c(e)
+                }
+                try {
+                    r.rooms = {}, await new Promise((e, t) => {
+                        Service.addRoom = (async t => {
+                            throw e(), new Error("Unknown Error (intentionally thrown by the test script)")
+                        }), n.inputElem.value = i.name, n.buttonElem.click(), setTimeout(() => t(new Error('"Service.addRoom" was not invoked when clicking lobbyView.buttonElem')), 200)
+                    }), Object.keys(r.rooms).length > 0 ? s.comments.push(d("No room should be added to the lobby if Service.addRoom rejects")) : (s.score += .25, l("No room was added to the lobby when Service.addRoom rejected"))
+                } catch (e) {
+                    s.comments.push(d('Error while testing buttonElem "click" event listener: ' + e.message)), c(e)
+                }
+                return Service.addRoom = a, s
+            }
+        }, {
+            id: "4",
+            description: "WebSocket Client",
+            maxScore: 3,
+            run: async () => {
+                let e = {
+                        id: 4,
+                        score: 0,
+                        comments: []
+                    },
+                    t = __tester.exports.get(main);
+                if (t)
+                    if (c('Checking if "socket" is a WebSocket instance'), t.socket) {
+                        let o = t.socket;
+                        o instanceof WebSocket ? (e.score += .25, l('"socket" is a WebSocket instance')) : e.comments.push(d('"socket" should be a WebSocket instance')), c('Checking "message" event listener on "socket"');
+                        let r = __tester.listeners.find(e => e.node === o && "message" === e.type);
+                        if (r) {
+                            e.score += .5, l('Found a "message" event listener on "socket"');
+                            let o = t.lobby;
+                            if (o instanceof Lobby) {
+                                let t = o.rooms,
+                                    n = Room.prototype.addMessage,
+                                    i = {},
+                                    a = s();
+                                i[a.id] = a, o.rooms = i;
+                                let m = {
+                                        roomId: a.id,
+                                        username: Math.random().toString(),
+                                        text: Math.random().toString()
+                                    },
+                                    h = new MessageEvent("message", {
+                                        data: JSON.stringify(m)
+                                    }),
+                                    g = new Promise((t, s) => {
+                                        Room.prototype.addMessage = ((s, o) => {
+                                            e.score += .5, l('"addMessage" was invoked'), s === m.username && o === m.text ? (e.score += .5, l('"addMessage" was invoked with correct arguments.')) : e.comments.push(d(`"addMessage" was invoked with incorrect arguments. Expecting: username = ${m.username}, text = ${m.text}; but got: username = ${s}, text = ${o}`)), t()
+                                        }), c('Emitting test "message" event'), r.invoke(h), setTimeout(() => s(new Error('"addMessage" was not called upon "message" event')), 200)
+                                    });
+                                try {
+                                    await g
+                                } catch (t) {
+                                    e.comments.push(d('Error while testing "message" event listener: ' + t.message)), c(t)
+                                } finally {
+                                    Room.prototype.addMessage = n, o.rooms = t
+                                }
+                            } else e.comments.push(d('"lobby" should be a Lobby instance'))
+                        } else e.comments.push(d('Could not find a "message" event listener on "socket"'))
+                    } else e.comments.push(d('local variable "socket" inside "main" was not found/exported'));
+                else e.comments.push(d('Unable to test: local variables inside "main" were not exported'));
+                if (c('Checking changes in "ChatView"'), "undefined" == typeof ChatView) e.comments.push(d('Could not find "ChatView"'));
+                else {
+                    let o = {
+                            value: Math.random()
+                        },
+                        r = new ChatView(o);
+                    if (r.socket !== o) e.comments.push(d('"ChatView" constructor should accept a single argument "socket" and assign it to the "socket" property'));
+                    else {
+                        if (e.score += .25, l('"ChatView" constructor accepts a single argument "socket" and assigns it to the "socket" property'), t.socket)
+                            if (t.chatView) {
+                                let s = t.socket;
+                                t.chatView.socket !== s ? e.comments.push(d('"chatView" should be initialized with the "socket" object created inside "main"')) : (e.score += .25, l('"chatView" is initialized with the "socket" object created inside "main"'))
+                            } else e.comments.push(d('local variable "chatView" inside "main" was not found/exported'));
+                        else e.comments.push(d('local variable "socket" inside "main" was not found/exported'));
+                        let n = s(),
+                            i = Math.random().toString();
+                        r.room = n, r.inputElem.value = i;
+                        let a = new Promise((t, s) => {
+                            o.send = (s => {
+                                if ("string" != typeof s) e.comments.push(d('"send" expects a JSON string. Got: ' + typeof s));
+                                else {
+                                    let t;
+                                    e.score += .25, l('"send" received a string as the argument');
+                                    try {
+                                        (t = JSON.parse(s)).roomId !== n.id ? e.comments.push(d('"roomId" in the message does not match the expected value. Expected: ' + n.id + " but got " + t.roomId)) : t.username !== profile.username ? e.comments.push(d('"username" in the message does not match the expected value. Expected: ' + profile.username + " but got " + t.username)) : t.text !== i ? e.comments.push(d('"text" in the message does not match the expected value. Expected: ' + i + " but got " + t.text)) : (e.score += .5, l("The JSON string contains the correct values"))
+                                    } catch (t) {
+                                        e.comments.push(d('Error while parsing the serialized object passed to "send" - expecting JSON format.')), c(t)
+                                    }
+                                }
+                                t()
+                            }), c('Checking "chatView.sendMessage"'), r.sendMessage(), setTimeout(() => s(new Error('WebSocket "send" was not called inside "sendMessage"')), 200)
+                        });
+                        try {
+                            await a
+                        } catch (t) {
+                            e.comments.push(d('Error while testing "send" invocation inside "sendMessage": ' + t.message)), c(t)
                         }
                     }
                 }
+                return e
             }
-            if (!LobbyView) {
-                result.comments.push(printError("Could not find LobbyView"))
-            } else {
-                if (!(LobbyView instanceof Function)) {
-                    result.comments.push(printError("LobbyView should be a class or a function"))
-                } else {
-                    let testRoom = makeTestRoom();
-                    let view = new LobbyView({
-                        rooms: {
-                            [testRoom.id]: testRoom
-                        }
-                    });
-                    if (!(view.elem instanceof HTMLElement)) {
-                        result.comments.push(printError('"elem" property of a LobbyView instance should be an HTMLElement'))
-                    } else {
-                        if (!view.listElem) {
-                            result.comments.push(printError('Could not find "listElem" property on a LobbyView instance'))
-                        } else {
-                            if (view.elem.querySelector("ul.room-list") !== view.listElem) {
-                                result.comments.push(printError('"listElem" property of a LobbyView instance should be a reference to ul.room-list'))
-                            } else {
-                                result.score += 2 / 7;
-                                printOK('"listElem" property of a LobbyView instance is a reference to ul.room-list')
-                            }
-                        }
-                        if (!view.inputElem) {
-                            result.comments.push(printError('Could not find "inputElem" property on a LobbyView instance'))
-                        } else {
-                            if (view.elem.querySelector(".page-control input[type=text]") !== view.inputElem) {
-                                result.comments.push(printError('"inputElem" property of a LobbyView instance should be a reference to the input[type=text] inside div.page-control'))
-                            } else {
-                                result.score += 2 / 7;
-                                printOK('"inputElem" property of a LobbyView instance is a reference to the input[type=text] inside div.page-control')
-                            }
-                        }
-                        if (!view.buttonElem) {
-                            result.comments.push(printError('Could not find "buttonElem" property on a LobbyView instance'))
-                        } else {
-                            if (view.elem.querySelector(".page-control button") !== view.buttonElem) {
-                                result.comments.push(printError('"buttonElem" property of a LobbyView instance should be a reference to the button inside div.page-control'))
-                            } else {
-                                result.score += 2 / 7;
-                                printOK('"buttonElem" property of a LobbyView instance is a reference to the button inside div.page-control')
-                            }
-                        }
-                    }
-                }
-            }
-            return result
-        }
-    }, {
-        id: "5",
-        description: "Object-Oriented Programming",
-        maxScore: 7,
-        run: async () => {
-            let result = {
-                id: 5,
-                score: 0,
-                comments: []
-            };
-            if (typeof Room === "undefined") {
-                result.comments.push(printError("Could not find Room"))
-            } else {
-                if (!(Room instanceof Function)) {
-                    result.comments.push(printError("Room should be a class or a function"))
-                } else {
-                    result.score += .5;
-                    printOK("Room is a function");
-                    let data = {
-                        id: Math.random(),
-                        name: Math.random(),
-                        image: Math.random(),
-                        messages: [{
-                            username: Math.random().toString(),
-                            text: Math.random().toString()
-                        }, {
-                            username: Math.random().toString(),
-                            text: Math.random().toString()
-                        }]
-                    };
-                    let room = new Room(data.id, data.name, data.image, data.messages);
-                    Object.keys(data).forEach(key => {
-                        if (room[key] !== data[key]) {
-                            result.comments.push(printError('Room constructor does not assign the given "' + key + '" argument to the "' + key + '" property of the Room instance'))
-                        } else {
-                            result.score += .25;
-                            printOK('Room constructor assigns the given "' + key + '" argument to the "' + key + '" property of the Room instance')
-                        }
-                    });
-                    let room2 = new Room(data.id, data.name);
-                    if (room2.image !== __tester.defaults.image) {
-                        result.comments.push(printError('Room constructor does not assign a default image url to the "image" property of the Room instance'))
-                    } else {
-                        result.score += .25;
-                        printOK('Room constructor assigns a default image url to the "image" property of the Room instance')
-                    }
-                    if (!(room2.messages instanceof Array && room2.messages.length === 0)) {
-                        result.comments.push(printError('Room constructor does not assign a default empty array to the "messages" property of the Room instance'))
-                    } else {
-                        result.score += .25;
-                        printOK('Room constructor assigns a default empty array to the "messages" property of the Room instance')
-                    }
-                    if (!Room.prototype.addMessage) {
-                        result.comments.push(printError('Could not find a "addMessage" method (prototype function) in Room'))
-                    } else {
-                        if (!(Room.prototype.addMessage instanceof Function)) {
-                            result.comments.push(printError('"addMessage" should be a function'))
-                        } else {
-                            result.score += .5;
-                            printOK('"addMessage" is a function');
-                            let testMessages = [];
-                            for (let i = 0; i < 5; i++) {
-                                testMessages.push({
+        }, {
+            id: "5",
+            description: "WebSocket Server",
+            maxScore: 4,
+            run: async () => {
+                let e = {
+                    id: 5,
+                    score: 0,
+                    comments: []
+                };
+                try {
+                    c('Checking if "ws" NPM module was installed in the server');
+                    let t = await o("checkRequire", "ws");
+                    if (t.error) e.comments.push(d('"ws" module was not installed: ' + t.error));
+                    else {
+                        e.score += .5, l('"ws" was installed');
+                        try {
+                            c('Trying to access "broker" in server.js');
+                            let t = await o("checkObjectType", "broker", "ws/Server");
+                            t.error ? e.comments.push(d('Error while checking "broker" type: ' + t.error)) : t.value ? (e.score += .5, l('"broker" is a "ws.Server" instance')) : e.comments.push(d('"broker" is not a "ws.Server" instance')), c("Starting end-to-end WebSocket test with 3 test clients A, B, and C");
+                            let s = await o("getObjectByString", "broker.clients"),
+                                r = s.length,
+                                n = new WebSocket(__tester.defaults.webSocketServer),
+                                i = new WebSocket(__tester.defaults.webSocketServer),
+                                a = new WebSocket(__tester.defaults.webSocketServer),
+                                h = [],
+                                g = [],
+                                u = [];
+                            if (n.addEventListener("message", e => h.push(JSON.parse(e.data))), i.addEventListener("message", e => g.push(JSON.parse(e.data))), a.addEventListener("message", e => u.push(JSON.parse(e.data))), await m(500), (s = await o("getObjectByString", "broker.clients")).length !== r + 3) e.comments.push(d("Could not find newly added WebSocket clients at the server."));
+                            else {
+                                let t = __tester.exports.get(main).lobby,
+                                    s = Object.keys(t.rooms)[0],
+                                    r = t.rooms[s].messages.splice(0, t.rooms[s].messages.length),
+                                    p = await o("getObjectByString", 'messages["' + s + '"]'),
+                                    b = {
+                                        roomId: s,
+                                        username: Math.random().toString(),
+                                        text: Math.random().toString()
+                                    };
+                                c("Client A sending a message"), n.send(JSON.stringify(b)), await m(250), 0 === h.length && 1 === g.length && 1 === u.length ? g[0].roomId !== b.roomId || g[0].username !== b.username || g[0].text !== b.text ? e.comments.push(d("Test client B did not receive the message sent by test client A")) : u[0].roomId !== b.roomId || u[0].username !== b.username || u[0].text !== b.text ? e.comments.push(d("Test client C did not receive the message sent by test client A")) : g[0].roomId === b.roomId && g[0].username === b.username && g[0].text === b.text && u[0].roomId === b.roomId && u[0].username === b.username && u[0].text === b.text ? (e.score += .5, l("Test clients received messages as expected when sending with test client A")) : e.comments.push(d("Test clients did not receive messages as expected when sending with test client A")) : e.comments.push(d("Test clients did not receive messages as expected when sending with test client A. Expected message count A = 0, B = 1, C = 1, but have " + `A = ${h.length}, B = ${g.length}, C = ${u.length}`)), c('checking if the message sent by client A was added in the "messages" object');
+                                let y = await o("getObjectByString", 'messages["' + s + '"]');
+                                if (y.length !== p.length + 1) y.length - p.length > 1 ? e.comments.push(d('Too many messages were added in messages["' + s + '"] in server.js')) : e.comments.push(d('The test message was not added in messages["' + s + '"] in server.js'));
+                                else {
+                                    let t = y[y.length - 1];
+                                    t.username !== b.username ? e.comments.push(d('The message added in messages["' + s + '"] does not have the same username as the test message')) : t.text !== b.text ? e.comments.push(d('The message added in messages["' + s + '"] does not have the same text as the test message')) : (e.score += .5, l('The message added in messages["' + s + '"] has the same text as the test message'))
+                                }
+                                b = {
+                                    roomId: s,
                                     username: Math.random().toString(),
                                     text: Math.random().toString()
-                                })
+                                }, c("Client B sending a message"), i.send(JSON.stringify(b)), await m(250), 1 === h.length && 1 === g.length && 2 === u.length ? h[0].roomId !== b.roomId || h[0].username !== b.username || h[0].text !== b.text ? e.comments.push(d("Test client A did not receive the message sent by test client B")) : u[1].roomId !== b.roomId || u[1].username !== b.username || u[1].text !== b.text ? e.comments.push(d("Test client C did not receive the message sent by test client B")) : h[0].roomId === b.roomId && h[0].username === b.username && h[0].text === b.text && u[1].roomId === b.roomId && u[1].username === b.username && u[1].text === b.text ? (e.score += .5, l("Test clients received messages as expected when sending with test client B")) : e.comments.push(d("Test clients did not receive messages as expected when sending with test client B")) : e.comments.push(d("Test clients did not receive messages as expected when sending with test client A. Expected message count A = 1, B = 1, C = 2, but have " + `A = ${h.length}, B = ${g.length}, C = ${u.length}`)), c('checking if the message sent by client B was added in the "messages" object');
+                                let v = await o("getObjectByString", 'messages["' + s + '"]');
+                                if (v.length !== p.length + 2) v.length - p.length > 2 ? e.comments.push(d('Too many messages were added in messages["' + s + '"] in server.js')) : e.comments.push(d('The test message was not added in messages["' + s + '"] in server.js'));
+                                else {
+                                    let t = v[v.length - 1];
+                                    t.username !== b.username ? e.comments.push(d('The message added in messages["' + s + '"] does not have the same username as the test message')) : t.text !== b.text ? e.comments.push(d('The message added in messages["' + s + '"] does not have the same text as the test message')) : (e.score += .5, l('The message added in messages["' + s + '"] has the same text as the test message'))
+                                }
+                                b = {
+                                    roomId: s,
+                                    username: Math.random().toString(),
+                                    text: Math.random().toString()
+                                }, c("Client C sending a message"), a.send(JSON.stringify(b)), await m(250), 2 === h.length && 2 === g.length && 2 === u.length ? h[1].roomId !== b.roomId || h[1].username !== b.username || h[1].text !== b.text ? e.comments.push(d("Test client A did not receive the message sent by test client C")) : g[1].roomId !== b.roomId || g[1].username !== b.username || g[1].text !== b.text ? e.comments.push(d("Test client C did not receive the message sent by test client A")) : h[1].roomId === b.roomId && h[1].username === b.username && h[1].text === b.text && g[1].roomId === b.roomId && g[1].username === b.username && g[1].text === b.text ? (e.score += .5, l("Test clients received messages as expected when sending with test client C")) : e.comments.push(d("Test clients did not receive messages as expected when sending with test client C")) : e.comments.push(d("Test clients did not receive messages as expected when sending with test client A. Expected message count A = 2, B = 2, C = 2, but have " + `A = ${h.length}, B = ${g.length}, C = ${u.length}`)), c('checking if the message sent by client C was added in the "messages" object');
+                                let w = await o("getObjectByString", 'messages["' + s + '"]');
+                                if (w.length !== p.length + 3) w.length - p.length > 3 ? e.comments.push(d('Too many messages were added in messages["' + s + '"] in server.js')) : e.comments.push(d('The test message was not added in messages["' + s + '"] in server.js'));
+                                else {
+                                    let t = w[w.length - 1];
+                                    t.username !== b.username ? e.comments.push(d('The message added in messages["' + s + '"] does not have the same username as the test message')) : t.text !== b.text ? e.comments.push(d('The message added in messages["' + s + '"] does not have the same text as the test message')) : (e.score += .5, l('The message added in messages["' + s + '"] has the same text as the test message'))
+                                }
+                                await o("setObjectByString", "messages." + s, p), t.rooms[s].messages.splice(0, t.rooms[s].messages.length, ...r)
                             }
-                            let room = new Room(data.id, data.name);
-                            room.messages = [];
-                            try {
-                                room.addMessage(testMessages[0].username, testMessages[0].text);
-                                if (room.messages.length === 0) {
-                                    result.comments.push(printError("No message was added to the Room instance after calling addMessage"))
-                                } else {
-                                    for (let i = 1; i < testMessages.length; i++) {
-                                        room.addMessage(testMessages[i].username, testMessages[i].text)
-                                    }
-                                    if (room.messages.length !== testMessages.length) {
-                                        result.comments.push(printError("called addMessage " + testMessages.length + " times but the Room instance contains only " + room.messages.length + " messages"))
-                                    } else {
-                                        let ordered = testMessages.reduce((acc, item, index) => acc && item.username === room.messages[index].username && item.text === room.messages[index].text, true);
-                                        if (!ordered) {
-                                            result.comments.push(printError("addMessage is either adding messages out of order, adding the wrong values, or creating message objects incorrectly"))
-                                        } else {
-                                            result.score += 1;
-                                            printOK("addMessage behaving as expected")
-                                        }
-                                    }
-                                }
-                                room.messages = [];
-                                room.addMessage(testMessages[0].username, "");
-                                if (room.messages.length !== 0) {
-                                    result.comments.push(printError("addMessage should not add any message if given an empty text"))
-                                } else {
-                                    result.score += .25;
-                                    printOK("addMessage does not add any message if given an empty text")
-                                }
-                                room.messages = [];
-                                room.addMessage(testMessages[0].username, "    \t  \n  \t");
-                                if (room.messages.length !== 0) {
-                                    result.comments.push(printError("addMessage should not add any message if given a sequence of whitespaces"))
-                                } else {
-                                    result.score += .25;
-                                    printOK("addMessage does not add any message if given a sequence of whitespaces")
-                                }
-                            } catch (err) {
-                                result.comments.push(printError("Unexpected error when calling addMessage: " + err.message))
-                            }
+                            n.close(), i.close(), a.close()
+                        } catch (t) {
+                            e.comments.push(d('Error while checking "broker" object on the server: ' + t.message)), c(t)
                         }
                     }
-                    if (typeof Lobby === "undefined") {
-                        result.comments.push(printError("Could not find Lobby"))
-                    } else {
-                        if (!(Lobby instanceof Function)) {
-                            result.comments.push(printError("Lobby should be a class or a function"))
-                        } else {
-                            result.score += .5;
-                            printOK("Lobby is a function");
-                            let lobby = new Lobby;
-                            let rooms;
-                            if (!(lobby.rooms && Object.keys(lobby.rooms).length > 0)) {
-                                result.comments.push(printError('Lobby constructor does not initialize a "rooms" property storing an Associative Array'))
-                            } else {
-                                rooms = Object.entries(lobby.rooms);
-                                let hasRooms = rooms.reduce((acc, item) => acc && item[1] instanceof Room, true);
-                                if (!hasRooms) {
-                                    result.comments.push(printError('"rooms" property of a Lobby instance should contain an Associative Array of Room instances'))
-                                } else {
-                                    result.score += .5;
-                                    printOK('"rooms" property of a Lobby instance contains an Associative Array of Room instances')
-                                }
-                            }
-                            if (!Lobby.prototype.getRoom) {
-                                result.comments.push(printError('Could not find a "getRoom" method (prototype function) in Lobby'))
-                            } else {
-                                if (!(Lobby.prototype.getRoom instanceof Function)) {
-                                    result.comments.push(printError('"getRoom" should be a function'))
-                                } else {
-                                    result.score += .5;
-                                    printOK('"getRoom" is a function');
-                                    try {
-                                        let found = lobby.getRoom(rooms[0][0]);
-                                        if (!(found && found instanceof Room)) {
-                                            result.comments.push(printError('"getRoom" should return a Room'))
-                                        } else {
-                                            if (found.id !== rooms[0][1].id) {
-                                                result.comments.push(printError('"getRoom" not returning the correct Room instance'))
-                                            } else {
-                                                result.score += .5;
-                                                printOK('"getRoom" returns the correct Room instance')
-                                            }
-                                        }
-                                    } catch (err) {
-                                        result.comments.push(printError("Unexpected error when calling getRoom: " + err.message))
-                                    }
-                                }
-                                if (!(Lobby.prototype.addRoom instanceof Function)) {
-                                    result.comments.push(printError('"addRoom" should be a function'))
-                                } else {
-                                    result.score += .5;
-                                    printOK('"addRoom" is a function');
-                                    try {
-                                        let testRoom = makeTestRoom();
-                                        lobby.addRoom(testRoom.id, testRoom.name, testRoom.image, testRoom.messages);
-                                        let found = lobby.rooms[testRoom.id];
-                                        if (!(found && found instanceof Room)) {
-                                            result.comments.push(printError('"addRoom" not adding a Room object to the "rooms" Associative Array'))
-                                        } else {
-                                            result.score += .5;
-                                            printOK('"addRoom" adds a Room object to the "rooms" Associative Array')
-                                        }
-                                    } catch (err) {
-                                        result.comments.push(printError("Unexpected error when calling addRoom: " + err.message))
-                                    }
-                                }
-                            }
-                        }
-                    }
+                } catch (t) {
+                    e.comments.push(d('Error while testing require("ws"). ' + t.message)), c(t)
                 }
+                return e
             }
-            return result
-        }
-    }, {
-        id: "6",
-        description: "Dynamic HTML with MVC (Control-Model)",
-        maxScore: 5,
-        run: async () => {
-            let result = {
-                id: 6,
-                score: 0,
-                comments: []
-            };
-            let mainScope = __tester.exports.get(main);
-            if (!mainScope) {
-                result.comments.push(printError('Unable to test: local variables inside "main" were not exported'))
-            } else {
-                if (!mainScope["lobby"]) {
-                    result.comments.push(printError('local variable "lobby" inside "main" was not found/exported'))
-                } else {
-                    let lobby = mainScope["lobby"];
-                    let lobbyOnNewRoom = lobby.onNewRoom;
-                    if (!(lobby instanceof Lobby)) {
-                        result.comments.push(printError('"lobby" should be a Lobby instance'))
-                    } else {
-                        result.score += .25;
-                        printOK('"lobby" is a Lobby instance')
-                    }
-                    let fakeView = new LobbyView(lobby);
-                    if (fakeView.lobby !== lobby) {
-                        result.comments.push(printError('LobbyView constructor does not assign the given "lobby" argument to the "lobby" property of the Lobby instance'))
-                    } else {
-                        result.score += .25;
-                        printOK('LobbyView constructor assigns the given "lobby" argument to the "lobby" property of the Lobby instance')
-                    }
-                    let lobbyView = mainScope["lobbyView"];
-                    if (!(lobbyView instanceof LobbyView)) {
-                        result.comments.push(printError('"lobbyView" should be a LobbyView instance'))
-                    } else {
-                        if (lobbyView.lobby !== lobby) {
-                            result.comments.push(printError('"lobby" should be passed as argument during "lobbyView" instantiation'))
-                        } else {
-                            result.score += .25;
-                            printOK('"lobby" is passed as argument during "lobbyView" instantiation')
-                        }
-                    }
-                    lobby.onNewRoom = lobbyOnNewRoom;
-                    if (!LobbyView.prototype.redrawList) {
-                        result.comments.push(printError('Could not find a "redrawList" method (prototype function) in LobbyView'))
-                    } else {
-                        if (!(LobbyView.prototype.redrawList instanceof Function)) {
-                            result.comments.push(printError('"redrawList" should be a function'))
-                        } else {
-                            result.score += .5;
-                            printOK('"redrawList" is a function');
-                            let testLobby = new Lobby;
-                            fakeView.lobby = testLobby;
-                            testLobby.rooms = {};
-                            for (let i = 0; i < 5; i++) {
-                                let room = makeTestRoom();
-                                testLobby.rooms[room.id] = room
-                            }
-                            fakeView.redrawList();
-                            let listItems = fakeView.listElem.querySelectorAll("li");
-                            if (listItems.length !== Object.keys(testLobby.rooms).length) {
-                                result.comments.push(printError('"redrawList" not rendering the right number of list items'))
-                            } else {
-                                result.score += .25;
-                                printOK('"redrawList" renders the right number of list items');
-                                let hasLinks = Object.values(testLobby.rooms).reduce((acc, item) => acc && !!fakeView.listElem.querySelector('a[href="#/chat/' + item.id + '"],a[href="/#/chat/' + item.id + '"]'), true);
-                                if (!hasLinks) {
-                                    result.comments.push(printError('list items rendered by "redrawList" does not contain hyperlinks to each of the rooms'))
-                                } else {
-                                    result.score += .5;
-                                    printOK('list items rendered by "redrawList" contains hyperlinks to each of the rooms');
-                                    fakeView.redrawList();
-                                    let listItems = fakeView.listElem.querySelectorAll("li");
-                                    if (listItems.length !== Object.keys(testLobby.rooms).length) {
-                                        result.comments.push(printError('"redrawList" not rendering the right number of list items'))
-                                    } else {
-                                        result.score += .25;
-                                        printOK('"redrawList" renders the right number of list items');
-                                        let hasLinks = Object.values(testLobby.rooms).reduce((acc, item) => acc && !!fakeView.listElem.querySelector('a[href="#/chat/' + item.id + '"],a[href="/#/chat/' + item.id + '"]'), true);
-                                        if (!hasLinks) {
-                                            result.comments.push(printError('list items rendered by "redrawList" does not contain hyperlinks to each of the rooms'))
-                                        } else {
-                                            result.score += 1;
-                                            printOK('list items rendered by "redrawList" contains hyperlinks to each of the rooms')
-                                        }
-                                    }
-                                }
-                            }
-                            fakeView = new LobbyView(testLobby);
-                            listItems = fakeView.listElem.querySelectorAll("li");
-                            if (listItems.length !== Object.keys(testLobby.rooms).length) {
-                                result.comments.push(printError('"redrawList" not called inside constructor'))
-                            } else {
-                                let hasLinks = Object.values(testLobby.rooms).reduce((acc, item) => acc && !!fakeView.listElem.querySelector('a[href="#/chat/' + item.id + '"],a[href="/#/chat/' + item.id + '"]'), true);
-                                if (!hasLinks) {
-                                    result.comments.push(printError('list items rendered by "redrawList" does not contain hyperlinks to each of the rooms'))
-                                } else {
-                                    result.score += .5;
-                                    printOK('list items rendered by "redrawList" contains hyperlinks to each of the rooms')
-                                }
-                            }
-                            let clickHandler = __tester.listeners.find(elem => elem.node === fakeView.buttonElem && elem.type === "click");
-                            if (!clickHandler) {
-                                result.comments.push('Could not find a "click" event listener on "buttonElem"')
-                            } else {
-                                result.score += .5;
-                                printOK('Found a "click" event listener on "buttonElem"');
-                                let testName = Math.random().toString();
-                                fakeView.inputElem.value = testName;
-                                fakeView.buttonElem.click();
-                                let added = Object.values(testLobby.rooms).find(item => item.name === testName);
-                                if (!added) {
-                                    result.comments.push(printError('Clicking "buttonElem" should add a new room in the "lobby" property of a LobbyView instance'))
-                                } else {
-                                    result.score += .5;
-                                    printOK('Clicking "buttonElem" adds a new room in the "lobby" property of a LobbyView instance')
-                                }
-                                if (fakeView.inputElem.value !== "") {
-                                    result.comments.push(printError("The input should be cleared after adding the room"))
-                                } else {
-                                    result.score += .25;
-                                    printOK("The input was cleared after adding the room")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return result
-        }
-    }, {
-        id: "7",
-        description: "Dynamic HTML with MVC (Model-View)",
-        maxScore: 2,
-        run: async () => {
-            let result = {
-                id: 7,
-                score: 0,
-                comments: []
-            };
-            let testRoom = makeTestRoom();
-            let testListener;
-            let testLobby = new Lobby;
-            testLobby.rooms = {};
-            await new Promise((resolve, reject) => {
-                testListener = (room => {
-                    if (room.id === testRoom.id && room.name === testRoom.name && room.image === testRoom.image) {
-                        result.score += 1;
-                        printOK("onNewRoom is called with the newly created Room instance")
-                    } else {
-                        result.comments.push(printError("onNewRoom should be called by passing the newly created Room instance"))
-                    }
-                    resolve()
-                });
-                testLobby.onNewRoom = testListener;
-                testLobby.addRoom(testRoom.id, testRoom.name, testRoom.image, testRoom.messages);
-                reject(new Error("onNewRoom event listener not invoked inside addRoom"))
-            });
-            testLobby.onNewRoom = null;
-            testLobby.rooms = {};
-            let fakeView = new LobbyView(testLobby);
-            if (!testLobby.onNewRoom) {
-                result.comments.push(printError('Inside LobbyView constructor, the "onNewRoom" property of the "lobby" object should be assigned a callback function'))
-            } else {
-                if (!(testLobby.onNewRoom instanceof Function)) {
-                    result.comments.push(printError('"onNewRoom" should be assigned a function'))
-                } else {
-                    let testRooms = [];
-                    for (let i = 0; i < 5; i++) {
-                        testRooms.push(makeTestRoom());
-                        testLobby.addRoom(testRooms[i].id, testRooms[i].name, testRooms[i].image, testRooms[i].messages)
-                    }
-                    let listItems = fakeView.listElem.querySelectorAll("li");
-                    if (listItems.length !== Object.keys(testLobby.rooms).length) {
-                        result.comments.push(printError("LobbyView not rendering the right number of list items "))
-                    } else {
-                        let hasLinks = Object.values(testLobby.rooms).reduce((acc, item) => acc && !!fakeView.listElem.querySelector('a[href="#/chat/' + item.id + '"],a[href="/#/chat/' + item.id + '"]'), true);
-                        if (!hasLinks) {
-                            result.comments.push(printError("list items rendered by LobbyView does not contain hyperlinks to each of the rooms"))
-                        } else {
-                            result.score += 1;
-                            printOK("list items rendered by LobbyView contains hyperlinks to each of the rooms")
-                        }
-                    }
-                }
-            }
-            return result
-        }
-    }, {
-        id: "8",
-        description: "Dynamic HTML with MVC (for ChatView)",
-        maxScore: 10,
-        run: async () => {
-            let result = {
-                id: 8,
-                score: 0,
-                comments: []
-            };
-            let data = makeTestRoom();
-            let testMessage = {
-                username: Math.random().toString(),
-                text: Math.random().toString()
-            };
-            let testRoom = new Room(data.id, data.name, data.image, data.messages);
-            let testListener;
-            await new Promise((resolve, reject) => {
-                testListener = (msg => {
-                    if (msg.username === testMessage.username && msg.text === testMessage.text) {
-                        result.score += .5;
-                        printOK("onNewMessage was called with the newly created message object")
-                    } else {
-                        result.comments.push(printError("onNewMessage should be called by passing the newly created message object"))
-                    }
-                    resolve()
-                });
-                testRoom.onNewMessage = testListener;
-                testRoom.addMessage(testMessage.username, testMessage.text);
-                reject(new Error("onNewMessage event listener not invoked inside addMessage"))
-            });
-            let fakeView = new ChatView;
-            if (fakeView.room !== null) {
-                result.comments.push(printError('ChatView constructor does not assign "null" to the "room" property'))
-            } else {
-                result.score += .5;
-                printOK('ChatView constructor assigns "null" to the "room" property')
-            }
-            fakeView.room = testRoom;
-            if (!(ChatView.prototype.sendMessage && ChatView.prototype.sendMessage instanceof Function)) {
-                result.comments.push(printError('Could not find a "sendMessage" method (prototype function) in ChatView'))
-            } else {
-                result.score += .5;
-                printOK('Found a "sendMessage" method in ChatView');
-                let testValue = Math.random().toString();
-                await new Promise((resolve, reject) => {
-                    testListener = (msg => {
-                        if (msg.username === profile.username && msg.text === testValue) {
-                            result.score += .5;
-                            printOK("onNewMessage was called with the newly created message object")
-                        } else {
-                            result.comments.push(printError("onNewMessage should be called by passing the newly created message object"));
-                            result.score += .25
-                        }
-                        resolve()
-                    });
-                    testRoom.onNewMessage = testListener;
-                    fakeView.inputElem.value = testValue;
-                    fakeView.sendMessage();
-                    reject(new Error("onNewMessage event listener not invoked inside addMessage"))
-                });
-                let added = Object.values(testRoom.messages).find(item => item.text === testValue);
-                if (!added) {
-                    result.comments.push(printError('Clicking "buttonElem" should add a new message in the "room" object associated with the ChatView instance'))
-                } else {
-                    result.score += .5;
-                    printOK('Clicking "buttonElem" adds a new message in the "room" object associated with the ChatView instance')
-                }
-                if (fakeView.inputElem.value !== "") {
-                    result.comments.push(printError("The input should be cleared after adding the room"))
-                } else {
-                    result.score += .25;
-                    printOK("The input was cleared after adding the room")
-                }
-                testRoom.onNewMessage = null;
-                let clickHandler = __tester.listeners.find(elem => elem.node === fakeView.buttonElem && elem.type === "click");
-                if (!clickHandler) {
-                    result.comments.push(printError('Could not find a "click" event listener on "buttonElem" of the ChatView instance'))
-                } else {
-                    result.score += .25;
-                    printOK('Found a "click" event listener on "buttonElem" of the ChatView instance');
-                    let oldSendMessage = ChatView.prototype.sendMessage;
-                    await new Promise((resolve, reject) => {
-                        ChatView.prototype.sendMessage = (() => {
-                            result.score += .5;
-                            ChatView.prototype.sendMessage = oldSendMessage;
-                            resolve();
-                            printOK("Clicking buttonElem triggers sendMessage")
-                        });
-                        fakeView.buttonElem.click();
-                        reject(new Error("Clicking buttonElem does not trigger sendMessage"))
-                    });
-                    ChatView.prototype.sendMessage = oldSendMessage
-                }
-                testRoom.onNewMessage = null;
-                let keyupHandler = __tester.listeners.find(elem => elem.node === fakeView.inputElem && elem.type === "keyup");
-                if (!keyupHandler) {
-                    result.comments.push(printError('Could not find a "keyup" event listener on "inputElem" of the ChatView instance'))
-                } else {
-                    result.score += .25;
-                    printOK('Found a "keyup" event listener on "inputElem" of the ChatView instance');
-                    let oldSendMessage = ChatView.prototype.sendMessage;
-                    await new Promise((resolve, reject) => {
-                        ChatView.prototype.sendMessage = (() => {
-                            reject(new Error("Keyup with key other than the enter key should not trigger sendMessage"))
-                        });
-                        keyupHandler.invoke(new KeyboardEvent("keyup", {
-                            keyCode: 27,
-                            shiftKey: false,
-                            key: "Escape",
-                            code: "Escape"
-                        }));
-                        resolve()
-                    });
-                    await new Promise((resolve, reject) => {
-                        ChatView.prototype.sendMessage = (() => {
-                            reject(new Error("Keyup with shift key pressed should not trigger sendMessage"))
-                        });
-                        keyupHandler.invoke(new KeyboardEvent("keyup", {
-                            keyCode: 13,
-                            shiftKey: true,
-                            key: "Enter",
-                            code: "Enter"
-                        }));
-                        resolve()
-                    });
-                    await new Promise((resolve, reject) => {
-                        ChatView.prototype.sendMessage = (() => {
-                            result.score += 1;
-                            resolve();
-                            printOK("Enter key without the shift key triggers sendMessage")
-                        });
-                        keyupHandler.invoke(new KeyboardEvent("keyup", {
-                            keyCode: 13,
-                            shiftKey: false,
-                            key: "Enter",
-                            code: "Enter"
-                        }));
-                        reject(new Error("Keyup with enter key without the shift key does not trigger sendMessage"))
-                    });
-                    ChatView.prototype.sendMessage = oldSendMessage
-                }
-            }
-            if (!(ChatView.prototype.setRoom && ChatView.prototype.setRoom instanceof Function)) {
-                result.comments.push(printError('Could not find a "setRoom" method (prototype function) in ChatView'))
-            } else {
-                result.score += .25;
-                printOK('Found a "setRoom" method in ChatView');
-                let data1 = makeTestRoom();
-                let data2 = makeTestRoom();
-                let testRoom1 = new Room(data1.id, data1.name, data1.image, data1.messages);
-                let testRoom2 = new Room(data2.id, data2.name, data2.image, data2.messages);
-                let testView = new ChatView;
-                let runRoomTest = testRoom => {
-                    if (testView.room !== testRoom) {
-                        result.comments.push(printError('"setRoom" should assign the given room to the "room" property of the ChatView instance'))
-                    } else {
-                        result.score += .25;
-                        printOK('"setRoom" assigns the given room to the "room" property of the ChatView instance')
-                    }
-                    if (testRoom.name !== testView.titleElem.textContent) {
-                        result.comments.push(printError('"setRoom" should display the given room name in "titleElem"'))
-                    } else {
-                        result.score += .25;
-                        printOK('"setRoom" displays the given room name in "titleElem"')
-                    }
-                    let chatUsers = testView.chatElem.querySelectorAll(".message .message-user");
-                    let chatTexts = testView.chatElem.querySelectorAll(".message .message-text");
-                    if (chatUsers.length !== testRoom.messages.length || chatTexts.length !== testRoom.messages.length) {
-                        result.comments.push(printError("Chat list is not displaying the same number of messages as the messages in the Room instance"))
-                    } else {
-                        result.score += .25;
-                        printOK("Chat list displays the same number of messages as the messages in the Room instance");
-                        let hasChats = testRoom.messages.reduce((acc, item, index) => acc && chatUsers[index].textContent.trim() === item.username && chatTexts[index].textContent.trim() === item.text, true);
-                        if (!hasChats) {
-                            result.comments.push(printError("Chat list is not displaying the messages correctly - potentially displaying out of order or with incorrect values"))
-                        } else {
-                            result.score += .25;
-                            printOK("Chat list displays the messages correctly")
-                        }
-                    }
-                    let testValue = Math.random().toString();
-                    testRoom.addMessage(profile.username, testValue);
-                    let myMessage = testView.chatElem.querySelectorAll(".my-message");
-                    if (myMessage.length !== 1) {
-                        result.comments.push(printError("Expecting just 1 new message to be added, but found " + myMessage.length + " messages"))
-                    } else {
-                        result.score += .25;
-                        printOK("Found 1 new message as expected");
-                        let messageText = myMessage[0].querySelector(".message-text").textContent.trim();
-                        if (messageText !== testValue) {
-                            result.comments.push(printError("Newly added message has the incorrect text. Expected " + testValue + " but got " + messageText))
-                        } else {
-                            result.score += .25;
-                            printOK("Newly added message has the correct text")
-                        }
-                    }
-                };
-                testView.setRoom(testRoom1);
-                runRoomTest(testRoom1);
-                testView.setRoom(testRoom2);
-                runRoomTest(testRoom2);
-                let mainScope = __tester.exports.get(main);
-                if (!mainScope) {
-                    result.comments.push(printError('Unable to test: local variables inside "main" were not exported'))
-                } else {
-                    if (!mainScope["lobby"]) {
-                        result.comments.push(printError('local variable "lobby" inside "main" was not found/exported'))
-                    } else {
-                        let lobby = mainScope["lobby"];
-                        let originalRooms = lobby.rooms;
-                        let testRooms = {};
-                        for (let i = 0; i < 4; i++) {
-                            let room = makeTestRoom();
-                            testRooms[room.id] = new Room(room.id, room.name, room.image, room.messages)
-                        }
-                        lobby.rooms = testRooms;
-                        let pageView = document.querySelector("div#page-view");
-                        if (!pageView) {
-                            result.comments.push(printError("Could not find div#page-view"));
-                            return result
-                        }
-                        let originalHash = window.location.hash;
-                        let originalPage = pageView.firstChild;
-                        let prevPage = originalPage;
-                        for (let id in lobby.rooms) {
-                            window.location.hash = "#/chat/" + id;
-                            await delay(10);
-                            let hasTitle = lobby.rooms[id].name === pageView.querySelector(".room-name").textContent.trim();
-                            if (!hasTitle) {
-                                result.comments.push(printError("The name of the Room instance is not shown in heading"))
-                            } else {
-                                result.score += .25;
-                                printOK("The name of the Room instance is shown in heading")
-                            }
-                            let chatUsers = pageView.querySelectorAll(".message .message-user");
-                            let chatTexts = pageView.querySelectorAll(".message .message-text");
-                            if (chatUsers.length !== lobby.rooms[id].messages.length || chatTexts.length !== lobby.rooms[id].messages.length) {
-                                result.comments.push(printError("Chat list is not displaying the same number of messages as the messages in the Room instance"))
-                            } else {
-                                let hasChats = lobby.rooms[id].messages.reduce((acc, item, index) => acc && chatUsers[index].textContent.trim() === item.username && chatTexts[index].textContent.trim() === item.text, true);
-                                if (!hasChats) {
-                                    result.comments.push(printError("Chat list is not displaying the messages correctly - potentially displaying out of order or with incorrect values"))
-                                } else {
-                                    result.score += .25;
-                                    printOK("Chat list displays the messages correctly")
-                                }
-                            }
-                            prevPage = pageView.firstChild
-                        }
-                        lobby.rooms = originalRooms;
-                        window.location.hash = originalHash
-                    }
-                }
-            }
-            return result
-        }
-    }];
-    const emoji = {
-        bug: String.fromCodePoint(128030),
-        like: String.fromCodePoint(128077)
-    };
-    const elem = (tagName, parent) => {
-        let e = document.createElement(tagName);
-        if (parent) parent.appendChild(e);
-        return e
-    };
-    const delay = ms => new Promise((resolve, reject) => setTimeout(resolve, ms));
-    const print = (text, ...extra) => (store.options.showLogs && console.log("[34m[Tester][0m", text, ...extra), text);
-    const printError = (text, ...extra) => (store.options.showLogs && console.log("[34m[Tester][0m %c Bug " + emoji.bug + " ", "background-color: red; color: white; padding: 1px;", text, ...extra), text);
-    const printOK = (text, ...extra) => (store.options.showLogs && console.log("[34m[Tester][0m %c OK " + emoji.like + " ", "background-color: green; color: white; padding: 1px;", text, ...extra), text);
-
-    function forEachAsync(asyncCallback, thisArg, delayMs = 0) {
-        let array = this;
-        let self = thisArg || this;
-        let boundCallback = asyncCallback.bind(self);
-        let next = async index => {
-            if (index === array.length) return null;
-            if (delayMs > 0 && index > 0) await delay(delayMs);
-            await boundCallback(array[index], index, array);
-            return await next(index + 1)
-        };
-        return next(0)
-    }
-    let store = window.localStorage.getItem("store_" + a);
-    if (store) store = JSON.parse(store);
-    else store = {
+        }],
+        n = String.fromCodePoint(128030),
+        i = String.fromCodePoint(128077),
+        a = (e, t) => {
+            let s = document.createElement(e);
+            return t && t.appendChild(s), s
+        },
+        m = e => new Promise((t, s) => setTimeout(t, e)),
+        c = (e, ...t) => (h.options.showLogs && console.log("[34m[Tester][0m", e, ...t), e),
+        d = (e, ...t) => (h.options.showLogs && console.log("[34m[Tester][0m %c Bug " + n + " ", "background-color: red; color: white; padding: 1px;", e, ...t), e),
+        l = (e, ...t) => (h.options.showLogs && console.log("[34m[Tester][0m %c OK " + i + " ", "background-color: green; color: white; padding: 1px;", e, ...t), e);
+    let h = window.localStorage.getItem("store_a3");
+    h = h ? JSON.parse(h) : {
         options: {
-            showLogs: true
+            showLogs: !0
         },
         selection: {},
         results: {},
         lastTestAt: null
     };
-    let ui = {};
-    let dom = elem("div");
-    dom.style.position = "fixed";
-    dom.style.top = "0px";
-    dom.style.right = "0px";
-    let button = elem("button");
-    button.textContent = "Test";
-    button.style.backgroundColor = "red";
-    button.style.color = "white";
-    button.style.padding = "0.5em";
-    let menu = elem("div");
-    menu.style.padding = "0.5em";
-    menu.style.position = "fixed";
-    menu.style.right = "0px";
-    menu.style.display = "flex";
-    menu.style.flexDirection = "column";
-    menu.style.backgroundColor = "white";
-    menu.style.visibility = "hidden";
-    let optionsDiv = elem("div", menu);
-    let showLogs = elem("label", optionsDiv);
-    let showLogsCheckbox = elem("input", showLogs);
-    showLogsCheckbox.type = "checkbox";
-    showLogsCheckbox.checked = "showLogs" in store.options ? store.options.showLogs : true;
-    showLogsCheckbox.addEventListener("change", evt => {
-        store.options.showLogs = evt.target.checked;
-        window.localStorage.setItem("store_" + a, JSON.stringify(store))
+    let g = {},
+        u = a("div");
+    u.style.position = "fixed", u.style.top = "0px", u.style.right = "0px";
+    let p = a("button");
+    p.textContent = "Test", p.style.backgroundColor = "red", p.style.color = "white", p.style.padding = "0.5em";
+    let b = a("div");
+    b.style.padding = "0.5em", b.style.position = "fixed", b.style.right = "0px", b.style.display = "flex", b.style.flexDirection = "column", b.style.backgroundColor = "white", b.style.visibility = "hidden";
+    let y = a("div", b),
+        v = a("label", y),
+        w = a("input", v);
+    w.type = "checkbox", w.checked = !("showLogs" in h.options) || h.options.showLogs, w.addEventListener("change", e => {
+        h.options.showLogs = e.target.checked, window.localStorage.setItem("store_a3", JSON.stringify(h))
+    }), v.appendChild(document.createTextNode(" Show logs during test"));
+    let S = a("table", b);
+    S.style.borderCollapse = "collapse";
+    let f = a("thead", S);
+    f.style.backgroundColor = "dimgray", f.style.color = "white";
+    let x = a("tr", f),
+        k = a("th", x);
+    k.textContent = "Task", k.style.padding = "0.25em";
+    let j = a("th", x);
+    j.textContent = "Description", j.style.padding = "0.25em";
+    let T = a("th", x);
+    T.textContent = "Run", T.style.padding = "0.25em";
+    let E = a("input", T);
+    E.type = "checkbox", E.checked = !!(h.selection && Object.keys(h.selection).length > 0) && Object.values(h.selection).reduce((e, t) => e && t, !0), E.addEventListener("change", e => {
+        r.forEach(t => {
+            g[t.id].checkBox.checked = e.target.checked, h.selection[t.id] = e.target.checked
+        }), window.localStorage.setItem("store_a3", JSON.stringify(h))
     });
-    showLogs.appendChild(document.createTextNode(" Show logs during test"));
-    let table = elem("table", menu);
-    table.style.borderCollapse = "collapse";
-    let thead = elem("thead", table);
-    thead.style.backgroundColor = "dimgray";
-    thead.style.color = "white";
-    let htr = elem("tr", thead);
-    let th0 = elem("th", htr);
-    th0.textContent = "Task";
-    th0.style.padding = "0.25em";
-    let th1 = elem("th", htr);
-    th1.textContent = "Description";
-    th1.style.padding = "0.25em";
-    let th2 = elem("th", htr);
-    th2.textContent = "Run";
-    th2.style.padding = "0.25em";
-    let checkBoxAll = elem("input", th2);
-    checkBoxAll.type = "checkbox";
-    checkBoxAll.checked = store.selection && Object.keys(store.selection).length > 0 ? Object.values(store.selection).reduce((acc, val) => acc && val, true) : false;
-    checkBoxAll.addEventListener("change", evt => {
-        tests.forEach(test => {
-            ui[test.id].checkBox.checked = evt.target.checked;
-            store.selection[test.id] = evt.target.checked
-        });
-        window.localStorage.setItem("store_" + a, JSON.stringify(store))
-    });
-    let th3 = elem("th", htr);
-    th3.textContent = "Result";
-    th3.style.padding = "0.25em";
-    let tbody = elem("tbody", table);
-    let tfoot = elem("tfoot", table);
-    let ftr = elem("tr", tfoot);
-    ftr.style.borderTop = "1px solid dimgray";
-    let fth0 = elem("th", ftr);
-    fth0.textContent = "Total";
-    fth0.colSpan = 3;
-    let fth1 = elem("th", ftr);
-    fth1.textContent = "-";
-    let renderResult = () => {
-        let sum = 0;
-        let maxScore = 0;
-        let allComments = [];
-        tests.forEach(test => {
-            let result = store.results[test.id];
-            sum += result.score;
-            maxScore += test.maxScore;
-            if (result.comments.length > 0) allComments.push("Task " + test.id + ":\n" + result.comments.map(comm => "  - " + comm).join("\n"))
-        });
-        fth1.textContent = sum + "/" + maxScore;
-        return {
-            sum: sum,
-            max: maxScore,
-            comments: allComments.join("\n")
-        }
-    };
-    let runButton = elem("button", menu);
-    runButton.id = "test-button";
-    runButton.textContent = "Run Tests";
-    let lastTested = elem("div", menu);
-    lastTested.style.fontSize = "0.8em";
-    lastTested.style.textAlign = "right";
-    if (store.lastTestAt) {
-        renderResult();
-        lastTested.textContent = "Last Run at: " + new Date(store.lastTestAt).toLocaleString()
-    }
-    tests.forEach((test, i) => {
-        let tr = elem("tr", tbody);
-        tr.style.backgroundColor = i % 2 === 0 ? "white" : "#eee";
-        let td0 = elem("td", tr);
-        td0.textContent = test.id;
-        td0.style.textAlign = "center";
-        let td1 = elem("td", tr);
-        td1.textContent = test.description;
-        let td2 = elem("td", tr);
-        td2.style.textAlign = "center";
-        let checkBox = elem("input", td2);
-        checkBox.type = "checkbox";
-        checkBox.checked = test.id in store.selection ? store.selection[test.id] : false;
-        checkBox.addEventListener("change", evt => {
-            store.selection[test.id] = evt.target.checked;
-            window.localStorage.setItem("store_" + a, JSON.stringify(store))
-        });
-        let td3 = elem("td", tr);
-        td3.style.textAlign = "center";
-        td3.textContent = test.id in store.results ? store.results[test.id].skipped ? "-" : store.results[test.id].score + "/" + test.maxScore : "-";
-        ui[test.id] = {
-            checkBox: checkBox,
-            resultCell: td3
-        }
-    });
-    dom.appendChild(button);
-    dom.appendChild(menu);
-    runButton.addEventListener("click", async evt => {
-        runButton.disabled = true;
-        await forEachAsync.call(tests, async test => {
-            let input = ui[test.id].checkBox;
-            let cell = ui[test.id].resultCell;
-            if (input.checked) {
-                runButton.textContent = "Running Test " + test.id;
-                let result;
-                try {
-                    print("--- Starting Test " + test.id + " ---");
-                    result = await test.run();
-                    print("--- Test " + test.id + " Finished --- Score = " + Math.round(100 * result.score) / 100 + " / " + test.maxScore);
-                    if (result && result.comments.length > 0) print("Task " + test.id + ":\n" + result.comments.map(comm => "  - " + comm).join("\n"));
-                    store.results[test.id] = {
-                        skipped: false,
-                        score: result ? Math.round(100 * result.score) / 100 : 0,
-                        comments: result ? result.comments : []
-                    }
-                } catch (err) {
-                    store.results[test.id] = {
-                        skipped: false,
-                        score: 0,
-                        comments: ["Error while running tests: " + err.message]
-                    };
-                    console.log(err)
-                }
-                if (store.options.showLogs) console.log("")
-            } else {
-                store.results[test.id] = {
-                    skipped: true,
-                    score: 0,
-                    comments: []
-                }
+    let R = a("th", x);
+    R.textContent = "Result", R.style.padding = "0.25em";
+    let A = a("tbody", S),
+        C = a("tfoot", S),
+        M = a("tr", C);
+    M.style.borderTop = "1px solid dimgray";
+    let _ = a("th", M);
+    _.textContent = "Total", _.colSpan = 3;
+    let L = a("th", M);
+    L.textContent = "-";
+    let P = () => {
+            let e = 0,
+                t = 0,
+                s = [];
+            return r.forEach(o => {
+                let r = h.results[o.id];
+                e += r.score, t += o.maxScore, r.comments.length > 0 && s.push("Task " + o.id + ":\n" + r.comments.map(e => "  - " + e).join("\n"))
+            }), L.textContent = e + "/" + t, {
+                sum: e,
+                max: t,
+                comments: s.join("\n")
             }
-            cell.textContent = store.results[test.id].skipped ? "Skipped" : Math.round(100 * store.results[test.id].score) / 100 + "/" + test.maxScore
+        },
+        O = a("button", b);
+    O.id = "test-button", O.textContent = "Run Tests";
+    let I = a("div", b);
+    I.style.fontSize = "0.8em", I.style.textAlign = "right", h.lastTestAt && (P(), I.textContent = "Last Run at: " + new Date(h.lastTestAt).toLocaleString()), r.forEach((e, t) => {
+        let s = a("tr", A);
+        s.style.backgroundColor = t % 2 == 0 ? "white" : "#eee";
+        let o = a("td", s);
+        o.textContent = e.id, o.style.textAlign = "center", a("td", s).textContent = e.description;
+        let r = a("td", s);
+        r.style.textAlign = "center";
+        let n = a("input", r);
+        n.type = "checkbox", n.checked = e.id in h.selection && h.selection[e.id], n.addEventListener("change", t => {
+            h.selection[e.id] = t.target.checked, window.localStorage.setItem("store_a3", JSON.stringify(h))
         });
-        let sum = renderResult();
-        console.log("[34m[Tester][0m", "Total = " + sum.sum + " / " + sum.max);
-        console.log(sum.comments);
-        store.lastTestAt = Date.now();
-        window.localStorage.setItem("store_" + a, JSON.stringify(store));
-        lastTested.textContent = "Last Run at: " + new Date(store.lastTestAt).toLocaleString();
-        runButton.textContent = "Run Tests";
-        runButton.disabled = false
-    });
-    button.addEventListener("click", evt => menu.style.visibility == "hidden" ? menu.style.visibility = "visible" : menu.style.visibility = "hidden");
-    document.body.appendChild(dom)
+        let i = a("td", s);
+        i.style.textAlign = "center", i.textContent = e.id in h.results ? h.results[e.id].skipped ? "-" : h.results[e.id].score + "/" + e.maxScore : "-", g[e.id] = {
+            checkBox: n,
+            resultCell: i
+        }
+    }), u.appendChild(p), u.appendChild(b), O.addEventListener("click", async e => {
+        O.disabled = !0, await
+        function(e, t, s = 0) {
+            let o = this,
+                r = t || this,
+                n = e.bind(r),
+                i = async e => e === o.length ? null : (s > 0 && e > 0 && await m(s), await n(o[e], e, o), await i(e + 1));
+            return i(0)
+        }.call(r, async e => {
+            let t = g[e.id].checkBox,
+                s = g[e.id].resultCell;
+            if (t.checked) {
+                let t;
+                O.textContent = "Running Test " + e.id;
+                try {
+                    c("--- Starting Test " + e.id + " ---"), t = await e.run(), c("--- Test " + e.id + " Finished --- Score = " + Math.round(100 * t.score) / 100 + " / " + e.maxScore), t && t.comments.length > 0 && c("Task " + e.id + ":\n" + t.comments.map(e => "  - " + e).join("\n")), h.results[e.id] = {
+                        skipped: !1,
+                        score: t ? Math.round(100 * t.score) / 100 : 0,
+                        comments: t ? t.comments : []
+                    }
+                } catch (t) {
+                    h.results[e.id] = {
+                        skipped: !1,
+                        score: 0,
+                        comments: ["Error while running tests: " + t.message]
+                    }, console.log(t)
+                }
+                h.options.showLogs && console.log("")
+            } else h.results[e.id] = {
+                skipped: !0,
+                score: 0,
+                comments: []
+            };
+            s.textContent = h.results[e.id].skipped ? "Skipped" : Math.round(100 * h.results[e.id].score) / 100 + "/" + e.maxScore
+        });
+        let t = P();
+        console.log("[34m[Tester][0m", "Total = " + t.sum + " / " + t.max), console.log(t.comments), h.lastTestAt = Date.now(), window.localStorage.setItem("store_a3", JSON.stringify(h)), I.textContent = "Last Run at: " + new Date(h.lastTestAt).toLocaleString(), O.textContent = "Run Tests", O.disabled = !1
+    }), p.addEventListener("click", e => "hidden" == b.style.visibility ? b.style.visibility = "visible" : b.style.visibility = "hidden"), document.body.appendChild(u)
 });

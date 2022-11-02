@@ -19,16 +19,79 @@ function createDOM (htmlString){
 
 var profile = {username:"Alice"};
 
+var Service = {
+  origin: window.location.origin,
+  getAllRooms: function() {
+    let request = new Promise((resolve, reject) =>{
+      let xhr = new XMLHttpRequest();
+      xhr.open("GET", Service.origin + "/chat");
+      xhr.send(null);
+
+      xhr.timeout = 2000;
+
+      xhr.ontimeout = function(){
+        reject(new Error("timed out"));
+      }
+
+      xhr.onload = function(){
+        if (xhr.status == 200){
+          resolve(JSON.parse(xhr.response));
+        } else{
+          reject(new Error(xhr.response));
+        }
+      }
+
+      xhr.onerror = function(err) {
+        reject(new Error(err));
+      }
+    });
+
+    return request;
+  },
+  addRoom: function(data){
+    let request = new Promise((resolve, reject) =>{
+      let xhr = new XMLHttpRequest();
+      xhr.open("POST", Service.origin + "/chat");
+      xhr.setRequestHeader("Content-type", "application/json");
+      xhr.send(JSON.stringify(data));
+
+      xhr.onload = function(){
+        if (xhr.status == 200){
+          resolve(JSON.parse(xhr.response));
+        } else{
+          reject(new Error(xhr.response));
+        }
+      }
+
+      xhr.onerror = function(err) {
+        reject(new Error(err));
+      }
+    });
+    return request;
+  }
+  
+
+};
+
+
+
 var p = window.addEventListener("load", main);
 console.log(p);
 
 function main() {
   let lobby = new Lobby();
 
+  let socket = new WebSocket("ws://localhost:8000");
+  socket.addEventListener("message", (msg) => {
+    let parsed = JSON.parse(msg.data);
+    let room = lobbyView.lobby.getRoom(parsed.roomId);
+    room.addMessage(parsed.username, parsed.text);
+  })
+
 
   var lobbyView = new LobbyView(lobby);
   var profileView = new ProfileView();
-  var chatView = new ChatView();
+  var chatView = new ChatView(socket);
   window.addEventListener("popstate", renderRoute);
   renderRoute();
   function renderRoute(){
@@ -62,11 +125,30 @@ function main() {
       pageview.appendChild(chatView.elem, pageview);
     }
   }
-  cpen322.export(arguments.callee, { renderRoute, lobbyView, chatView, profileView, lobby });
-}
+function refreshLobby(){
+    Service.getAllRooms().then((result)=> {
+      for(let i = 0; i < result.length; i++){
+        
+        let room = result[i];
 
+        if(room.id in lobby.rooms){
+          lobby.rooms[room.id].image = room.image;
+          lobby.rooms[room.id].name = room.name;
+        } else {
+          lobby.addRoom(room.id, room.name, room.image, room.messages);
+        }
+        
+      }
+    });
+  }
+  
 
+    refreshLobby();
+    setInterval(refreshLobby, 6000);
 
+    cpen322.export(arguments.callee, { refreshLobby, renderRoute, lobbyView, chatView, profileView, lobby, socket});
+  }
+  
 class LobbyView{
   constructor(lobby){
     this.lobby = lobby;
@@ -116,7 +198,16 @@ class LobbyView{
 
   buttonclickhandler(theLobbyView) {
     let text = theLobbyView.inputElem.value;
-    theLobbyView.lobby.addRoom(text,text);
+    let roomToAdd = {
+      name: theLobbyView.inputElem.value,
+      image: "assets/everyone-icon.png"
+    }
+    Service.addRoom(roomToAdd).then( (result) => {
+      theLobbyView.lobby.addRoom(result.id,result.name, result.image);
+      console.log("added room");
+    });
+    //TODO fix promises and stuff
+    
     theLobbyView.inputElem.value = "";
   }
 
@@ -157,7 +248,7 @@ class LobbyView{
 }
 
 class ChatView {
-  constructor() {
+  constructor(socket) {
     this.elem = createDOM(`
           <div id = "page-view">
           <div class = "content">
@@ -184,6 +275,7 @@ class ChatView {
     this.chatElem = this.elem.querySelector("div.message-list");
     this.inputElem = this.elem.querySelector("textarea");
     this.buttonElem = this.elem.querySelector("button");
+    this.socket = socket;
 
     this.room = null;
 
@@ -206,6 +298,12 @@ class ChatView {
     let inputmessage = this.inputElem.value;
     this.room.addMessage(profile.username, inputmessage);
     this.inputElem.value = "";
+    let message = {
+      roomId: this.room.id,
+      username: profile.username,
+      text: inputmessage
+    };
+    this.socket.send(JSON.stringify(message));
   }
 
   setRoom(room){
@@ -333,11 +431,9 @@ class Lobby{
   constructor(){
     this.rooms = {};
 
-    //this.rooms = [new Room("0", "69", "", "")];
-    this.addRoom("room-1", "room1");
-    this.addRoom("2", "room2");
-    this.addRoom("3", "room3");
-    // this.addRoom("4", "room4");
+    // this.addRoom("room-1", "room1");
+    // this.addRoom("2", "room2");
+    // this.addRoom("3", "room3");
   }
 
   getRoom(roomId){
