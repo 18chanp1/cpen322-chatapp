@@ -83,8 +83,10 @@ function main() {
 
   let socket = new WebSocket("ws://localhost:8000");
   socket.addEventListener("message", (msg) => {
+    console.log("RCVD");
     let parsed = JSON.parse(msg.data);
-    let room = lobbyView.lobby.getRoom(parsed.roomId);
+    console.log(typeof parsed);
+    let room = lobbyView.lobby.rooms[parsed.roomId];
     room.addMessage(parsed.username, parsed.text);
   })
 
@@ -294,7 +296,6 @@ class ChatView {
   }
 
   sendMessage(){
-    ("sent");
     let inputmessage = this.inputElem.value;
     this.room.addMessage(profile.username, inputmessage);
     this.inputElem.value = "";

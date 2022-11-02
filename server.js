@@ -2,6 +2,9 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const cpen322 = require('./cpen322-tester.js');
+const ws = require('ws');
+const e = require('express');
+const { escape } = require('querystring');
 
 function logRequest(req, res, next){
 	console.log(`${new Date()}  ${req.ip} : ${req.method} ${req.path}`);
@@ -14,6 +17,37 @@ const clientApp = path.join(__dirname, 'client');
 
 // express app
 let app = express();
+
+//ws stuff
+let broker = new ws.Server({port: 8000});
+let clients = [];
+broker.binaryType = "blob";
+
+broker.on('connection', function connection(ws) {
+
+	ws.onmessage = function(inp) {
+	  console.log(inp.data);
+	  for(const e of broker.clients){
+		if(e === ws){
+			continue;
+		}
+		console.log((e === ws));
+		 e.send(inp.data);
+	  }
+
+	  console.log(inp.data);
+	  console.log(typeof inp.data);
+	  let parsed = JSON.parse(inp.data);
+
+	  if(!parsed.roomId in messages){
+		message[parsed.roomId] = [];
+	  }
+	  messages[parsed.roomId].push(parsed);
+	}
+
+
+  });
+
 
 app.use(express.json()) 						// to parse application/json
 app.use(express.urlencoded({ extended: true })) // to parse application/x-www-form-urlencoded
@@ -91,4 +125,4 @@ app.post('/chat', (req, res) =>{
 })
 
 cpen322.connect('http://52.43.220.29/cpen322/test-a3-server.js');
-cpen322.export(__filename, { app, chatrooms, messages });
+cpen322.export(__filename, { app, chatrooms, messages, broker });
