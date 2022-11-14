@@ -134,10 +134,10 @@ function refreshLobby(){
         let room = result[i];
 
         if(room.id in lobby.rooms){
-          lobby.rooms[room.id].image = room.image;
-          lobby.rooms[room.id].name = room.name;
+          lobby.rooms[room._id].image = room.image;
+          lobby.rooms[room._id].name = room.name;
         } else {
-          lobby.addRoom(room.id, room.name, room.image, room.messages);
+          lobby.addRoom(room._id, room.name, room.image, room.messages);
         }
         
       }
@@ -205,7 +205,7 @@ class LobbyView{
       image: "assets/everyone-icon.png"
     }
     Service.addRoom(roomToAdd).then( (result) => {
-      theLobbyView.lobby.addRoom(result.id,result.name, result.image);
+      theLobbyView.lobby.addRoom(result._id,result.name, result.image);
       console.log("added room");
     });
     //TODO fix promises and stuff
