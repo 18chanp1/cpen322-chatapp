@@ -14,10 +14,30 @@ function createDOM (htmlString){
     return template.content.firstChild;
 }
 
-
-
-
-
+function* makeConversationLoader(room) {
+      let date = room.createDate;
+      let flag = true;
+    
+      while(flag){
+        yield new Promise((resolve, reject) => {
+          room.canLoadConversation = false;
+          Service.getLastConversation(room.id, date).then((convo) => {
+            if(convo == null){
+              resolve(null);
+              flag = false;
+              return;
+            }
+            date = convo.timestamp;
+            room.canLoadConversation = true;
+            room.addConversation(convo);
+            resolve(convo);
+          }, (err) =>{
+            flag = false;
+            reject(null);
+          } )
+        })
+      }
+}
 
 var profile = {username:"Alice"};
 
@@ -175,7 +195,7 @@ function refreshLobby(){
     refreshLobby();
     setInterval(refreshLobby, 6000);
 
-    cpen322.export(arguments.callee, { refreshLobby, renderRoute, lobbyView, chatView, profileView, lobby, socket});
+    cpen322.export(arguments.callee, {lobby, chatView});
   }
   
 class LobbyView{
@@ -320,6 +340,16 @@ class ChatView {
       }
     }
     );
+
+    this.chatElem.addEventListener("wheel", (event) => {
+        let dUp = event.wheelDeltaY < 0;
+        let loadable = this.room.canLoadConversation;
+        let top = window.scrollY == 0;
+
+        if (dUp && loadable && top){
+          this.room.getLastConversation.next();
+        }
+    });
   }
 
   sendMessage(){
@@ -331,6 +361,7 @@ class ChatView {
       username: profile.username,
       text: inputmessage
     };
+
     this.socket.send(JSON.stringify(message));
   }
 
@@ -362,6 +393,7 @@ class ChatView {
 
       this.chatElem.appendChild(messageDOM);
 
+
     }
 
     let ourChatView = this;
@@ -388,7 +420,33 @@ class ChatView {
 
       ourChatView.chatElem.appendChild(messageDOM);
     }
+
+    this.room.onFetchConversation = function (conversation) {
+        for(message in conversation.messages){
+          console.log("adding")
+
+          let messageDOM = createDOM(`
+            <div class = "message">
+            <span class = "message-user"></span> <br>
+            <span class = "message-text"></span> <br>
+            </div>
+          `)
+    
+          
+        
+          messageDOM.querySelector("span.message-user").textContent = message.username;
+          messageDOM.querySelector("span.message-text").textContent = message.text;
+    
+          if(profile.username === message.username){
+            messageDOM.className = "message my-message";
+          }
+    
+          ourChatView.chatElem.appendChild(messageDOM);
+        }
+    }
   }
+
+
 }
 
 class ProfileView {
@@ -428,6 +486,9 @@ class Room {
     this.name = name;
     this.image = typeof image !== 'undefined' ? image: "assets/everyone-icon.png";
     this.messages = typeof messages !== 'undefined' ? messages :[];
+    this.getLastConversation = makeConversationLoader(this);
+    this.canLoadConversation = true;
+    this.createDate = Date.now();
   }
 
   addMessage(username, text){
@@ -449,10 +510,21 @@ class Room {
 
     console.log("All messages");
     console.log(this.messages);
-
-    
     
   }
+
+  addConversation(conversation){
+    let messagesToAdd = conversation.messages;
+
+
+    for(let i = messagesToAdd.length - 1; i >=0; i--){
+      this.messages.unshift(messagesToAdd[i]);
+    }
+
+    this.onFetchConversation(conversation);
+  }
+
+  
 }
 
 class Lobby{
