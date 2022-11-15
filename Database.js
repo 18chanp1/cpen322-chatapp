@@ -44,23 +44,28 @@ Database.prototype.getRoom = function(room_id){
 			/* TODO: read the chatroom from `db`
 			 * and resolve the result */
 
-			let validObjectID = room_id instanceof ObjectId;
+			let flag = false;
+			try{
+				ObjectId(room_id);
+			} catch(err) {
+				flag = true;
+			}
+
+			let objID = flag ? null : db.collection("chatrooms").findOne({_id: ObjectId(room_id)});
+			let regID = db.collection("chatrooms").findOne({_id: room_id});
+
+			Promise.all([objID, regID]).then((values) =>{
+				if(values[0] != null){
+					resolve(values[0]);
+				} else {
+					resolve(values[1]);
+				}
+			})
+
 			
 
-			//consider objectID
-			if(validObjectID && db.collection('chatrooms').findOne({"_id": room_id}) != null){
-				resolve(db.collection('chatrooms').findOne({"_id": room_id}));
-			}
-
-			//consider id only
-			if(db.collection('chatrooms').findOne({"_id": room_id}) != null){
-				resolve(db.collection('chatrooms').findOne({"_id": room_id}));
-			}
-
-			resolve(null);
-
 		})
-	)
+	);
 }
 
 Database.prototype.addRoom = function(room){
@@ -68,8 +73,33 @@ Database.prototype.addRoom = function(room){
 		new Promise((resolve, reject) => {
 			/* TODO: insert a room in the "chatrooms" collection in `db`
 			 * and resolve the newly added room */
+
+			if(!("name" in room)){
+				reject(new Error("No name provided"));
+				return;
+			} else{
+				db.collection("chatrooms").insertOne(room).then((doc) =>{
+					room._id = doc.insertedId;
+
+					db.collection("chatrooms").findOne(room).then((treasure) => {
+						if(treasure == null){
+							reject(new Error("added failed, cannot find"));
+						} else {
+							resolve(treasure);
+						}
+					}, (err) => {
+						reject(new Error("added failed, cannot find"));
+					})
+					//resolve(room);
+				});
+
+
+			}
+			
+			
+			
 		})
-	)
+	);
 }
 
 Database.prototype.getLastConversation = function(room_id, before){

@@ -65,17 +65,17 @@ app.listen(port, () => {
 	console.log(`${new Date()}  App Started. Listening on ${host}:${port}, serving ${clientApp}`);
 });
 
-var chatrooms = [];
-chatrooms[0] = {
-	id: "0", 
-	name: "math100groupchat",
-	image: "assets/everyone-icon.png"
-}
-chatrooms[1] = {
-	id: "1", 
-	name: "math101groupchat",
-	image: "assets/everyone-icon.png"
-}
+// var chatrooms = [];
+// chatrooms[0] = {
+// 	id: "0", 
+// 	name: "math100groupchat",
+// 	image: "assets/everyone-icon.png"
+// }
+// chatrooms[1] = {
+// 	id: "1", 
+// 	name: "math101groupchat",
+// 	image: "assets/everyone-icon.png"
+// }
 
 var messages = {};
 db.getRooms().then((fetchedRooms) =>{
@@ -118,24 +118,32 @@ app.get('/chat', (req, res) => {
 })
 
 app.post('/chat', (req, res) =>{
+	console.log("POSTING");
 	let request = req.body;
 	if("name" in request && request.name.trim()){
 		let uniqueID = request.name;
 		while(uniqueID in messages){
 			uniqueID = request.name;
-			uniqueID += Date.now;
+			uniqueID += Date.now();
 		}
 
 		let room = {
-			id: uniqueID,
+			_id: uniqueID,
 			name: request.name,
 			image: request.image
 		}
 
-		chatrooms.push(room);
-		messages[uniqueID] = [];
-
-		res.status(200).send(JSON.stringify(room));
+		console.log("preparing to add");
+		console.log(room);
+		db.addRoom(room).then((addedroom) =>{
+			console.log("logging rooms");
+			console.log(room);
+			console.log(addedroom);
+			console.log(addedroom == room);
+			messages[addedroom._id] = [];
+			res.status(200).send(JSON.stringify(addedroom));
+		});
+		return;
 		
 	} 
 	else{
@@ -146,4 +154,4 @@ app.post('/chat', (req, res) =>{
 })
 
 cpen322.connect('http://52.43.220.29/cpen322/test-a4-server.js');
-cpen322.export(__filename, { app, chatrooms, messages, broker, db});
+cpen322.export(__filename, { app, messages, broker, db});
