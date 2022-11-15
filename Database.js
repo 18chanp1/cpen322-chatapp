@@ -103,10 +103,45 @@ Database.prototype.addRoom = function(room){
 }
 
 Database.prototype.getLastConversation = function(room_id, before){
+	console.log("entering db meth");
+	console.log(room_id);
+	console.log(before);
 	return this.connected.then(db =>
 		new Promise((resolve, reject) => {
 			/* TODO: read a conversation from `db` based on the given arguments
 			 * and resolve if found */
+			let date = before == null ? Date.now() : before;
+
+			console.log(room_id);
+			console.log(date);
+			
+			db.collection("conversations").find({"room_id": room_id, "timestamp": {$lt: date}}).toArray().then((blocks) => {
+				if(blocks.length < 1){
+					console.log("couldn't find anything");
+					//console.log(blocks);
+					resolve(null);
+					return;
+				}
+				else {
+					let min = date - blocks[0].timestamp;
+					let index = 0;
+					for(let p = 0; p < blocks.length; p++){
+						if(date - blocks[p].timestamp < min){
+							min = date - blocks[p].timestamp
+							index = p;
+						}
+					}
+
+					console.log("ret block");
+					console.log(blocks[index]);
+					resolve(blocks[index]);
+					return;
+				}
+				
+				
+
+			});
+
 		})
 	)
 }
@@ -116,6 +151,17 @@ Database.prototype.addConversation = function(conversation){
 		new Promise((resolve, reject) => {
 			/* TODO: insert a conversation in the "conversations" collection in `db`
 			 * and resolve the newly added conversation */
+
+			if((!("room_id" in conversation)) || (!("timestamp" in conversation)) || (!("messages" in conversation))){
+				reject(new Error("Missing elements"));
+			}
+			else {
+				db.collection("conversations").insertOne(conversation).then(() =>{
+					resolve(conversation);
+				});
+			}
+
+			
 		})
 	)
 }

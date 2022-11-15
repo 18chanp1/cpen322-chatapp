@@ -17,6 +17,8 @@ function createDOM (htmlString){
 
 
 
+
+
 var profile = {username:"Alice"};
 
 var Service = {
@@ -68,6 +70,31 @@ var Service = {
       }
     });
     return request;
+  },
+
+  getLastConversation: function(roomId, before){
+
+    return new Promise((resolve, reject) => {
+      let xhr = new XMLHttpRequest();
+      xhr.open("GET", Service.origin + "/chat/" + roomId + "/messages" + "?before=" + before);
+      xhr.send(null);
+  
+      xhr.onload = function() {
+        if (xhr.status == 200){
+          console.log("now logging response");
+          //console.log();
+          resolve(JSON.parse(xhr.response));
+        }
+        else {
+          reject(new Error("Failed to get last conversation, responded"));
+        }
+      }
+  
+      xhr.onerror = function() {
+        reject(new Error("Failed to get last conversation"));
+      }
+  
+    });
   }
   
 
@@ -449,3 +476,5 @@ class Lobby{
     }
   }
 }
+
+

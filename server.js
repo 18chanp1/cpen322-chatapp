@@ -6,6 +6,8 @@ const ws = require('ws');
 const e = require('express');
 const { escape } = require('querystring');
 
+let messageBlockSize = 10;
+
 function logRequest(req, res, next){
 	console.log(`${new Date()}  ${req.ip} : ${req.method} ${req.path}`);
 	next();
@@ -13,6 +15,7 @@ function logRequest(req, res, next){
 
 //db stuff
 const Database = require('./Database.js');
+const { resolve } = require('path');
 
 let db = new Database("mongodb://localhost:27017", "cpen322-messenger");
 
@@ -32,23 +35,25 @@ broker.binaryType = "blob";
 broker.on('connection', function connection(ws) {
 
 	ws.onmessage = function(inp) {
-	  console.log(inp.data);
 	  for(const e of broker.clients){
 		if(e === ws){
 			continue;
 		}
-		console.log((e === ws));
 		 e.send(inp.data);
 	  }
 
-	  console.log(inp.data);
-	  console.log(typeof inp.data);
 	  let parsed = JSON.parse(inp.data);
 
 	  if(!parsed.roomId in messages){
-		message[parsed.roomId] = [];
+		messages[parsed.roomId] = [];
 	  }
 	  messages[parsed.roomId].push(parsed);
+
+	  if(messages[parsed.roomId].length == messageBlockSize){
+		db.addConversation({"room_id": parsed.roomId, "timestamp": Date.now(), "messages": messages[parsed.roomId]}).then(() =>{
+			messages[parsed.roomId] = [];
+		});
+	  }
 	}
 
 
@@ -85,11 +90,27 @@ db.getRooms().then((fetchedRooms) =>{
 	}
 });
 
+app.get("/chat/:room_id/messages", (req, res) =>{
+	let rmId = req.params.room_id.toString();
+	let time = parseInt(req.query.before);
+
+	console.log("calling fx");
+	console.log(rmId);
+	db.getLastConversation(rmId, time).then((convo) =>{
+		console.log(convo);
+		if(convo != null){
+			res.status(200).send(convo);
+		} else {
+			res.status(400).send("error");
+		}
+	})
+});
+
+
 app.get("/chat/:room_id", (req, res) =>{
 	let rmId = req.params.room_id;
 
 	db.getRoom(rmId).then((room) => {
-		console.log(room);
 		if(room != null){
 			res.status(200).send(room);
 		}
@@ -118,7 +139,6 @@ app.get('/chat', (req, res) => {
 })
 
 app.post('/chat', (req, res) =>{
-	console.log("POSTING");
 	let request = req.body;
 	if("name" in request && request.name.trim()){
 		let uniqueID = request.name;
@@ -133,13 +153,8 @@ app.post('/chat', (req, res) =>{
 			image: request.image
 		}
 
-		console.log("preparing to add");
-		console.log(room);
+	
 		db.addRoom(room).then((addedroom) =>{
-			console.log("logging rooms");
-			console.log(room);
-			console.log(addedroom);
-			console.log(addedroom == room);
 			messages[addedroom._id] = [];
 			res.status(200).send(JSON.stringify(addedroom));
 		});
@@ -147,11 +162,10 @@ app.post('/chat', (req, res) =>{
 		
 	} 
 	else{
-		console.log("malformed");
 		res.status(400).send("malformed request");
 		return;
 	}
 })
 
 cpen322.connect('http://52.43.220.29/cpen322/test-a4-server.js');
-cpen322.export(__filename, { app, messages, broker, db});
+cpen322.export(__filename, { app, messages, broker, db, messageBlockSize});
