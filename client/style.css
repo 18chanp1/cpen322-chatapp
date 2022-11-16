@@ -44,3 +44,12 @@ div.my-message
 {
     background-color: brown;
 }
+
+div.message-list
+{
+    background-color:beige;
+    min-height: 40px;
+    max-height: 50px;
+    max-width: 600px;
+    overflow: scroll;
+}

@@ -341,12 +341,17 @@ class ChatView {
     }
     );
 
-    this.chatElem.addEventListener("wheel", (event) => {
-        let dUp = event.wheelDeltaY < 0;
-        let loadable = this.room.canLoadConversation;
-        let top = window.scrollY == 0;
+    let chatElementthingy = this.chatElem;
 
-        if (dUp && loadable && top){
+    this.chatElem.addEventListener("wheel", (event) => {
+        let dUp = event.wheelDeltaY > 0;
+        let loadable = this.room.canLoadConversation;
+        let top = chatElementthingy.scrollTop <= 0;
+
+        console.log("wheeling!");
+        console.log(chatElementthingy.scrollTop);
+
+        if (top && dUp && loadable){
           this.room.getLastConversation.next();
         }
     });
@@ -421,29 +426,35 @@ class ChatView {
       ourChatView.chatElem.appendChild(messageDOM);
     }
 
-    this.room.onFetchConversation = function (conversation) {
-        for(message in conversation.messages){
-          console.log("adding")
+    let that = this;
 
+    this.room.onFetchConversation = function (conversation) {
+        let before = that.chatElem.scrollHeight;
+
+        for(let i = conversation.messages.length - 1; i >=0; i--){
+          let message = conversation.messages[i];
           let messageDOM = createDOM(`
-            <div class = "message">
-            <span class = "message-user"></span> <br>
-            <span class = "message-text"></span> <br>
-            </div>
-          `)
-    
-          
-        
+          <div class = "message">
+          <span class = "message-user"></span> <br>
+          <span class = "message-text"></span> <br>
+          </div>
+        `)
           messageDOM.querySelector("span.message-user").textContent = message.username;
           messageDOM.querySelector("span.message-text").textContent = message.text;
-    
+  
           if(profile.username === message.username){
             messageDOM.className = "message my-message";
           }
-    
-          ourChatView.chatElem.appendChild(messageDOM);
+  
+          ourChatView.chatElem.insertBefore(messageDOM, ourChatView.chatElem.firstChild);
+
         }
+
+        that.chatElem.scrollTop = that.chatElem.scrollHeight - before;
+
     }
+
+
   }
 
 
