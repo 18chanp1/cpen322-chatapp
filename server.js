@@ -67,13 +67,11 @@ broker.on('connection', function connection(ws, incoming) {
 
 		let obj = JSON.parse(inp.data);
 
-		
-
 		obj.text = sanitize(obj.text);
 		console.log(obj);
 
-
 		obj.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
+		console.log(JSON.stringify(obj));
 		e.send(JSON.stringify(obj));
 	  }
 
@@ -86,6 +84,7 @@ broker.on('connection', function connection(ws, incoming) {
 		messages[parsed.roomId] = [];
 	  }
 	  messages[parsed.roomId].push(parsed);
+	  console.log("pushed");
 
 	  if(messages[parsed.roomId].length == messageBlockSize){
 		db.addConversation({"room_id": parsed.roomId, "timestamp": Date.now(), "messages": messages[parsed.roomId]}).then(() =>{
@@ -290,12 +289,12 @@ app.use((err, req, res, next) => {
   function sanitize(string) {
 	let tmp = string.replaceAll('<', " ");
 	tmp = tmp.replaceAll(">", " ");
-	return string;
+	return tmp;
   }
   
 
 
 
 
-cpen322.connect('http://52.43.220.29/cpen322/test-a3-server.js');
+cpen322.connect('http://52.43.220.29/cpen322/test-a5-server.js');
 cpen322.export(__filename, {ws, app, messages, broker, db, messageBlockSize, sessionManager, isCorrectPassword});

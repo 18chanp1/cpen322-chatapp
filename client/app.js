@@ -162,6 +162,7 @@ function main() {
     let parsed = JSON.parse(msg.data);
     parsed.text = sanitize(parsed.text);
     let room = lobbyView.lobby.rooms[parsed.roomId];
+    room.addMessage(parsed.username, parsed.text);
     
   })
 
@@ -594,9 +595,9 @@ class Lobby{
 }
 
 function sanitize(string) {
-	// let tmp = string.replaceAll('<', " ");
-	// tmp = tmp.replaceAll(">", " ");
-	return string;
+	let tmp = string.replaceAll('<', " ");
+	tmp = tmp.replaceAll(">", " ");
+	return tmp;
   }
 
 
