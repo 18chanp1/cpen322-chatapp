@@ -39,7 +39,6 @@ function* makeConversationLoader(room) {
       }
 }
 
-var profile = {username:"Alice"};
 
 var Service = {
   origin: window.location.origin,
@@ -56,7 +55,9 @@ var Service = {
       }
 
       xhr.onload = function(){
+        console.log(xhr.status);
         if (xhr.status == 200){
+          console.log(xhr.response);
           resolve(JSON.parse(xhr.response));
         } else{
           reject(new Error(xhr.response));
@@ -115,10 +116,36 @@ var Service = {
       }
   
     });
-  }
-  
+  },
 
-};
+  getProfile: function() {
+    return new Promise((resolve, reject) => {
+      let xhr = new XMLHttpRequest();
+      xhr.open("GET", Service.origin + "/profile");
+      xhr.send(null);
+  
+      xhr.onload = function() {
+        if (xhr.status == 200){
+          console.log("now logging response");
+          //console.log();
+          resolve(JSON.parse(xhr.response));
+        }
+        else {
+          reject(new Error("Failed to get last conversation, responded"));
+        }
+      }
+  
+      xhr.onerror = function() {
+        reject(new Error("Failed to get last conversation"));
+      }
+  
+    });
+  },
+
+}
+
+var profile = Service.getProfile().then((success) => {return success});
+
 
 
 
@@ -196,6 +223,9 @@ function refreshLobby(){
     setInterval(refreshLobby, 6000);
 
     cpen322.export(arguments.callee, {lobby, chatView});
+
+    profile = Service.getProfile().then((success) => {profile = success});
+
   }
   
 class LobbyView{
@@ -294,6 +324,8 @@ class LobbyView{
 
     //TODO
   }
+
+  
 }
 
 class ChatView {

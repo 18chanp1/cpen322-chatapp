@@ -5,6 +5,7 @@ const cpen322 = require('./cpen322-tester.js');
 const ws = require('ws');
 const e = require('express');
 const { escape } = require('querystring');
+const crypto = require('crypto');
 
 let messageBlockSize = 10;
 
@@ -15,10 +16,13 @@ function logRequest(req, res, next){
 
 //db stuff
 const Database = require('./Database.js');
-const { resolve } = require('path');
+const { resolve, parse } = require('path');
+const SessionManager = require('./SessionManager.js');
+const { request } = require('http');
 
 let db = new Database("mongodb://localhost:27017", "cpen322-messenger");
 
+let sessionManager = new SessionManager();
 
 const host = 'localhost';
 const port = 3000;
@@ -27,22 +31,51 @@ const clientApp = path.join(__dirname, 'client');
 // express app
 let app = express();
 
+
+
 //ws stuff
 let broker = new ws.Server({port: 8000});
 let clients = [];
 broker.binaryType = "blob";
 
-broker.on('connection', function connection(ws) {
+broker.on('connection', function connection(ws, incoming) {
+
+	//parse cookies
+
+	let successParse = true;
+	let cookieObj = ""
+
+	if(incoming.headers.cookie == null){
+		ws.close();
+	}
+	try{
+		 cookieObj = parseCookie(incoming.headers.cookie.toString());
+	} catch (error) {
+		successParse = false;
+		ws.close();
+	}
+	if(successParse && sessionManager.getUsername(cookieObj[`cpen322-session`]) == null){
+		ws.close();
+	}
+
 
 	ws.onmessage = function(inp) {
 	  for(const e of broker.clients){
 		if(e === ws){
 			continue;
 		}
-		 e.send(inp.data);
+		let obj = JSON.parse(inp.data);
+		obj.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
+		e.send(JSON.stringify(obj));
 	  }
 
+	  console.log(inp.data);
+
 	  let parsed = JSON.parse(inp.data);
+
+	  console.log(parsed.username);
+	  parsed.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
+	  console.log(parsed.username);
 
 	  if(!parsed.roomId in messages){
 		messages[parsed.roomId] = [];
@@ -65,7 +98,7 @@ app.use(express.urlencoded({ extended: true })) // to parse application/x-www-fo
 app.use(logRequest);							// logging for debug
 
 // serve static files (client-side)
-app.use('/', express.static(clientApp, { extensions: ['html'] }));
+
 app.listen(port, () => {
 	console.log(`${new Date()}  App Started. Listening on ${host}:${port}, serving ${clientApp}`);
 });
@@ -90,24 +123,22 @@ db.getRooms().then((fetchedRooms) =>{
 	}
 });
 
-app.get("/chat/:room_id/messages", (req, res) =>{
+app.get("/chat/:room_id/messages", sessionManager.middleware, (req, res) =>{
 	let rmId = req.params.room_id.toString();
 	let time = parseInt(req.query.before);
 
-	console.log("calling fx");
-	console.log(rmId);
+
 	db.getLastConversation(rmId, time).then((convo) =>{
-		console.log(convo);
 		if(convo != null){
-			res.status(200).send(convo);
+			res.status(200).send(JSON.stringify(convo));
 		} else {
-			res.status(400).send("error");
+			res.status(200).send("");
 		}
 	})
 });
 
 
-app.get("/chat/:room_id", (req, res) =>{
+app.get("/chat/:room_id", sessionManager.middleware, (req, res) =>{
 	let rmId = req.params.room_id;
 
 	db.getRoom(rmId).then((room) => {
@@ -121,7 +152,7 @@ app.get("/chat/:room_id", (req, res) =>{
 });
 
 
-app.get('/chat', (req, res) => {
+app.get('/chat', sessionManager.middleware, (req, res) => {
 	let result = [];
 
 	db.getRooms().then((fetchedRooms) => {
@@ -134,11 +165,11 @@ app.get('/chat', (req, res) => {
 			}
 			result.push(room);
 		}
-		res.status(200).send(result);
+		res.status(200).send(JSON.stringify(result));
 	});
 })
 
-app.post('/chat', (req, res) =>{
+app.post('/chat', sessionManager.middleware, (req, res) =>{
 	let request = req.body;
 	if("name" in request && request.name.trim()){
 		let uniqueID = request.name;
@@ -167,5 +198,92 @@ app.post('/chat', (req, res) =>{
 	}
 })
 
-cpen322.connect('http://52.43.220.29/cpen322/test-a4-server.js');
-cpen322.export(__filename, { app, messages, broker, db, messageBlockSize});
+app.get("/profile", sessionManager.middleware, (req, res) =>{
+	res.status(200).send(JSON.stringify({"username": req.username}));
+});
+
+
+app.use("/app.js", sessionManager.middleware);
+app.use("/index.html", sessionManager.middleware);
+app.use("/index", sessionManager.middleware);
+
+
+app.get("/logout", (req, res) =>{
+	sessionManager.deleteSession(req);
+	res.redirect("/login");
+});
+
+
+
+//session stuff
+//let sessionManager = new SessionManager();
+
+app.post('/login', (req, res) =>{
+	let user = req.body.username;
+	
+	if(user == null){
+		res.redirect('/login');
+		res.send();
+	}
+	else {
+		db.getUser(user).then((userdoc) => {
+			if(userdoc == null){
+				res.redirect("/login");
+				res.send();
+			}
+			//compute password
+			else if (!isCorrectPassword(req.body.password, userdoc.password)){
+				res.redirect("/login");
+				res.send();
+			}
+			else {
+				sessionManager.createSession(res, user);
+				res.redirect("/");
+				res.send();
+			}
+		})
+	}
+})
+
+app.use('/login', express.static(clientApp+'/login.html', { extensions: ['html'] }));
+app.use('/', sessionManager.middleware, express.static(clientApp, { extensions: ['html'] }));
+
+
+
+function isCorrectPassword(password, saltedHash){
+	let salt = saltedHash.slice(0, 20);
+	let hash = crypto.createHash('sha256').update(password + salt).digest('base64');
+	let compare = salt + hash;
+
+	return compare == saltedHash;
+}
+
+app.use((err, req, res, next) => {
+	if(err instanceof SessionManager.Error){
+		if(req.headers.accept == "application/json"){
+			res.status(401).send(err);
+		} else{
+			res.redirect("/login");
+		}
+		
+	}
+	else {
+		res.status(500).send("Not SessionError Object");
+	}
+  });
+
+  const parseCookie = str =>
+  str
+  .split(';')
+  .map(v => v.split('='))
+  .reduce((acc, v) => {
+    acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
+    return acc;
+  }, {});
+
+
+
+
+
+cpen322.connect('http://52.43.220.29/cpen322/test-a5-server.js');
+cpen322.export(__filename, { app, messages, broker, db, messageBlockSize, sessionManager, isCorrectPassword});

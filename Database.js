@@ -14,7 +14,10 @@ function Database(mongoUrl, dbName){
 				useNewUrlParser: true
 			},
 			(err, client) => {
-				if (err) reject(err);
+				if (err) {
+					reject(err);
+				}
+				
 				else {
 					console.log('[MongoClient] Connected to ' + mongoUrl + '/' + dbName);
 					resolve(client.db(dbName));
@@ -103,22 +106,17 @@ Database.prototype.addRoom = function(room){
 }
 
 Database.prototype.getLastConversation = function(room_id, before){
-	console.log("entering db meth");
-	console.log(room_id);
-	console.log(before);
+
 	return this.connected.then(db =>
 		new Promise((resolve, reject) => {
 			/* TODO: read a conversation from `db` based on the given arguments
 			 * and resolve if found */
 			let date = before == null ? Date.now() : before;
 
-			console.log(room_id);
-			console.log(date);
 			
 			db.collection("conversations").find({"room_id": room_id, "timestamp": {$lt: date}}).toArray().then((blocks) => {
 				if(blocks.length < 1){
-					console.log("couldn't find anything");
-					//console.log(blocks);
+
 					resolve(null);
 					return;
 				}
@@ -132,8 +130,6 @@ Database.prototype.getLastConversation = function(room_id, before){
 						}
 					}
 
-					console.log("ret block");
-					console.log(blocks[index]);
 					resolve(blocks[index]);
 					return;
 				}
@@ -165,5 +161,15 @@ Database.prototype.addConversation = function(conversation){
 		})
 	)
 }
+
+Database.prototype.getUser = function(username) {
+	return this.connected.then(db =>
+		new Promise((resolve, reject) => {
+			resolve(db.collection('users').findOne({username: username}));
+		})
+	);
+}
+
+
 
 module.exports = Database;
