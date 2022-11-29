@@ -60,33 +60,27 @@ broker.on('connection', function connection(ws, incoming) {
 
 
 	ws.onmessage = function(inp) {
+		let parsed = JSON.parse(inp.data);
+		parsed.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
+		parsed.text = sanitize(parsed.text);
+
 	  for(const e of broker.clients){
 		if(e === ws){
 			continue;
 		}
-
-		let obj = JSON.parse(inp.data);
-
-		obj.text = sanitize(obj.text);
-		console.log(obj);
-
-		obj.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
-		console.log(JSON.stringify(obj));
-		e.send(JSON.stringify(obj));
+		e.send(JSON.stringify(parsed));
 	  }
 
-	  let parsed = JSON.parse(inp.data);
-	  parsed.text = sanitize(parsed.text);
 	  parsed.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
+	  console.log(parsed);
 
 
 	  if(!parsed.roomId in messages){
 		messages[parsed.roomId] = [];
 	  }
 	  messages[parsed.roomId].push(parsed);
-	  console.log("pushed");
 
-	  if(messages[parsed.roomId].length == messageBlockSize){
+	  if(messages[parsed.roomId].length === messageBlockSize){
 		db.addConversation({"room_id": parsed.roomId, "timestamp": Date.now(), "messages": messages[parsed.roomId]}).then(() =>{
 			messages[parsed.roomId] = [];
 		});
@@ -134,7 +128,7 @@ app.get("/chat/:room_id/messages", sessionManager.middleware, (req, res) =>{
 
 	db.getLastConversation(rmId, time).then((convo) =>{
 		if(convo != null){
-			res.status(200).send(JSON.stringify(convo));
+			res.status(200).send(convo);
 		} else {
 			res.status(200).send("");
 		}
@@ -159,6 +153,11 @@ app.get("/chat/:room_id", sessionManager.middleware, (req, res) =>{
 app.get('/chat', sessionManager.middleware, (req, res) => {
 	let result = [];
 
+	if(req.greatSuccess == false){
+		res.status(401).send("not authenticated");
+		return;
+	}
+
 	db.getRooms().then((fetchedRooms) => {
 		for(let q = 0; q < fetchedRooms.length; q++){
 			let room = {
@@ -169,7 +168,7 @@ app.get('/chat', sessionManager.middleware, (req, res) => {
 			}
 			result.push(room);
 		}
-		res.status(200).send(JSON.stringify(result));
+		res.status(200).send(result);
 	});
 })
 
@@ -203,7 +202,7 @@ app.post('/chat', sessionManager.middleware, (req, res) =>{
 })
 
 app.get("/profile", sessionManager.middleware, (req, res) =>{
-	res.status(200).send(JSON.stringify({"username": req.username}));
+	res.status(200).send({"username": req.username});
 });
 
 
@@ -263,11 +262,13 @@ function isCorrectPassword(password, saltedHash){
 }
 
 app.use((err, req, res, next) => {
+	
 	if(err instanceof SessionManager.Error){
 		if(req.headers.accept == "application/json"){
 			res.status(401).send(err);
 		} else{
 			res.redirect("/login");
+			req.greatSuccess = false;
 		}
 		
 	}
@@ -287,8 +288,7 @@ app.use((err, req, res, next) => {
 
 
   function sanitize(string) {
-	let tmp = string.replaceAll('<', " ");
-	tmp = tmp.replaceAll(">", " ");
+	let tmp = string.replaceAll("<", "");
 	return tmp;
   }
   

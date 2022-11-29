@@ -45,9 +45,11 @@ function SessionManager (){
 
 	this.middleware = (request, response, next) => {
 		/* To be implemented */
+		request.greatSuccess = true;
 		let ck = request.headers.cookie
 
 		if(ck == null) {
+			request.greatSuccess = false;
 			next(new SessionError);
 			return;
 		}
@@ -55,6 +57,7 @@ function SessionManager (){
 		
 		let cookieObject = parseCookie(ck);
 		if(!(cookieObject[`cpen322-session`] in sessions)){
+			request.greatSuccess = false;
 			next(new SessionError);
 			return;
 		}

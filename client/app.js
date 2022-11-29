@@ -397,7 +397,7 @@ class ChatView {
     this.inputElem.value = "";
     let message = {
       roomId: this.room.id,
-      username: profile.username,
+      //username: profile.username,
       text: inputmessage
     };
 
@@ -551,9 +551,11 @@ class Room {
         this.onNewMessage(aMessage);
       }
 
+      console.log(aMessage);
     }
 
     console.log("All messages");
+    
     console.log(this.messages);
     
   }
@@ -595,9 +597,7 @@ class Lobby{
 }
 
 function sanitize(string) {
-	let tmp = string.replaceAll('<', " ");
-	tmp = tmp.replaceAll(">", " ");
-	return tmp;
-  }
+  return string.replaceAll("<", "");
+}
 
 
