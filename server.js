@@ -64,18 +64,23 @@ broker.on('connection', function connection(ws, incoming) {
 		if(e === ws){
 			continue;
 		}
+
 		let obj = JSON.parse(inp.data);
+
+		
+
+		obj.text = sanitize(obj.text);
+		console.log(obj);
+
+
 		obj.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
 		e.send(JSON.stringify(obj));
 	  }
 
-	  console.log(inp.data);
-
 	  let parsed = JSON.parse(inp.data);
-
-	  console.log(parsed.username);
+	  parsed.text = sanitize(parsed.text);
 	  parsed.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
-	  console.log(parsed.username);
+
 
 	  if(!parsed.roomId in messages){
 		messages[parsed.roomId] = [];
@@ -282,8 +287,15 @@ app.use((err, req, res, next) => {
   }, {});
 
 
+  function sanitize(string) {
+	let tmp = string.replaceAll('<', " ");
+	tmp = tmp.replaceAll(">", " ");
+	return string;
+  }
+  
 
 
 
-cpen322.connect('http://52.43.220.29/cpen322/test-a5-server.js');
-cpen322.export(__filename, { app, messages, broker, db, messageBlockSize, sessionManager, isCorrectPassword});
+
+cpen322.connect('http://52.43.220.29/cpen322/test-a3-server.js');
+cpen322.export(__filename, {ws, app, messages, broker, db, messageBlockSize, sessionManager, isCorrectPassword});

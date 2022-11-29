@@ -157,11 +157,12 @@ function main() {
 
   let socket = new WebSocket("ws://localhost:8000");
   socket.addEventListener("message", (msg) => {
+    
     console.log("RCVD");
     let parsed = JSON.parse(msg.data);
-    console.log(typeof parsed);
+    parsed.text = sanitize(parsed.text);
     let room = lobbyView.lobby.rooms[parsed.roomId];
-    room.addMessage(parsed.username, parsed.text);
+    
   })
 
 
@@ -591,5 +592,11 @@ class Lobby{
     }
   }
 }
+
+function sanitize(string) {
+	// let tmp = string.replaceAll('<', " ");
+	// tmp = tmp.replaceAll(">", " ");
+	return string;
+  }
 
 
