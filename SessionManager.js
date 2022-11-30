@@ -7,7 +7,7 @@ class SessionError extends Error {};
 function SessionManager (){
 	// default session length - you might want to
 	// set this to something small during development
-	const CookieMaxAgeMs = 600000;
+	const CookieMaxAgeMs = 6000000;
 
 	// keeping the session data inside a closure to keep them protected
 	const sessions = {};

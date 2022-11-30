@@ -157,10 +157,13 @@ function main() {
 
   let socket = new WebSocket("ws://localhost:8000");
   socket.addEventListener("message", (msg) => {
+
     
     console.log("RCVD");
     let parsed = JSON.parse(msg.data);
     parsed.text = sanitize(parsed.text);
+    console.log("receiving from broker");
+    console.log(parsed);
     let room = lobbyView.lobby.rooms[parsed.roomId];
     room.addMessage(parsed.username, parsed.text);
     
@@ -441,6 +444,9 @@ class ChatView {
 
       console.log("adding")
 
+      message.text = sanitize(message.text);
+
+
       let messageDOM = createDOM(`
         <div class = "message">
         <span class = "message-user"></span> <br>
@@ -537,6 +543,8 @@ class Room {
   }
 
   addMessage(username, text){
+    text = sanitize(text);
+
     if(text.trim().length === 0){
       return;
     }
@@ -597,6 +605,7 @@ class Lobby{
 }
 
 function sanitize(string) {
+  //return string
   return string.replaceAll("<", "");
 }
 

@@ -68,16 +68,15 @@ broker.on('connection', function connection(ws, incoming) {
 		if(e === ws){
 			continue;
 		}
+
 		e.send(JSON.stringify(parsed));
 	  }
-
-	  parsed.username = sessionManager.getUsername(cookieObj[`cpen322-session`]);
-	  console.log(parsed);
 
 
 	  if(!parsed.roomId in messages){
 		messages[parsed.roomId] = [];
 	  }
+	  
 	  messages[parsed.roomId].push(parsed);
 
 	  if(messages[parsed.roomId].length === messageBlockSize){
@@ -288,8 +287,7 @@ app.use((err, req, res, next) => {
 
 
   function sanitize(string) {
-	let tmp = string.replaceAll("<", "");
-	return tmp;
+	return string.replaceAll("<", "");
   }
   
 
