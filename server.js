@@ -287,8 +287,17 @@ app.use((err, req, res, next) => {
 
 
   function sanitize(string) {
-	return string.replaceAll("<", "");
+	//wh tis not working?
+	//return string;
+
+	let regexp = /on[a-zA-Z]+="/g
+
+	let result = string.replaceAll(regexp, "");
+	console.log(result);
+	result = result.replaceAll(`<script>`, "");
+	return result;
   }
+
   
 
 
