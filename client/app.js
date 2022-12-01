@@ -605,8 +605,12 @@ class Lobby{
 }
 
 function sanitize(string) {
-  //return string
-  return string.replaceAll("<", "");
-}
+	//wh tis not working?
+	//return string;
+
+	let regexp = /on[a-zA-Z]+="|<\/script>/g
+
+	return string.match(regexp) === null ? string : "censored";
+  }
 
 

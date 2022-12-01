@@ -79,7 +79,7 @@ broker.on('connection', function connection(ws, incoming) {
 	  
 	  messages[parsed.roomId].push(parsed);
 
-	  if(messages[parsed.roomId].length === messageBlockSize){
+	  if(messages[parsed.roomId].length === 1){
 		db.addConversation({"room_id": parsed.roomId, "timestamp": Date.now(), "messages": messages[parsed.roomId]}).then(() =>{
 			messages[parsed.roomId] = [];
 		});
@@ -290,12 +290,9 @@ app.use((err, req, res, next) => {
 	//wh tis not working?
 	//return string;
 
-	let regexp = /on[a-zA-Z]+="/g
+	let regexp = /on[a-zA-Z]+="|<\/script>/g
 
-	let result = string.replaceAll(regexp, "");
-	console.log(result);
-	result = result.replaceAll(`<script>`, "");
-	return result;
+	return string.match(regexp) === null ? string : "censored";
   }
 
   
