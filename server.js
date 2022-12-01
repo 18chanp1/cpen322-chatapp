@@ -7,7 +7,7 @@ const e = require('express');
 const { escape } = require('querystring');
 const crypto = require('crypto');
 
-let messageBlockSize = 10;
+let messageBlockSize = 1;
 
 function logRequest(req, res, next){
 	console.log(`${new Date()}  ${req.ip} : ${req.method} ${req.path}`);
@@ -79,7 +79,7 @@ broker.on('connection', function connection(ws, incoming) {
 	  
 	  messages[parsed.roomId].push(parsed);
 
-	  if(messages[parsed.roomId].length === 1){
+	  if(messages[parsed.roomId].length === messageBlockSize){
 		db.addConversation({"room_id": parsed.roomId, "timestamp": Date.now(), "messages": messages[parsed.roomId]}).then(() =>{
 			messages[parsed.roomId] = [];
 		});
